@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://localhost:3001/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -36,6 +36,13 @@ export const groupAPI = {
   getGroupById: (id) => api.get(`/groups/${id}`),
   updateGroup: (id, groupData) => api.put(`/groups/${id}`, groupData),
   deleteGroup: (id) => api.delete(`/groups/${id}`),
+};
+
+export const dashboardAPI = {
+  getDashboardData: () => api.get('/dashboard'),
+  getSummary: () => api.get('/dashboard/summary'),
+  getRecentActivities: () => api.get('/dashboard/activities'),
+  getUserGroups: () => api.get('/dashboard/groups'),
 };
 
 export default api; 

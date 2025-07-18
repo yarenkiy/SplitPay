@@ -1,6 +1,6 @@
 import React from 'react';
-import HomeScreen from '../../src/screens/HomeScreen';
+import DashboardScreen from '../../src/screens/DashboardScreen';
 
-export default function TabLayout({ navigation }) {
-  return <HomeScreen navigation={navigation} />;
+export default function TabLayout() {
+  return <DashboardScreen />;
 }

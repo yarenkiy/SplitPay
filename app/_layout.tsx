@@ -1,11 +1,38 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useContext, useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { AuthProvider } from '../src/context/AuthContext';
+import { AuthContext, AuthProvider } from '../src/context/AuthContext';
+
+function RootLayoutNav() {
+  const { userToken, isLoading } = useContext(AuthContext);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (userToken) {
+        // User is logged in, redirect to dashboard
+        router.replace('/(tabs)');
+      } else {
+        // User is not logged in, redirect to login
+        router.replace('/login');
+      }
+    }
+  }, [userToken, isLoading, router]);
+
+  return (
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="register" options={{ headerShown: false }} />
+      <Stack.Screen name="+not-found" />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -21,10 +48,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="+not-found" />
-        </Stack>
+        <RootLayoutNav />
         <StatusBar style="auto" />
       </ThemeProvider>
     </AuthProvider>

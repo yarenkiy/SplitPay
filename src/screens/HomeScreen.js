@@ -1,8 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen() {
+  const router = useRouter();
+
   return (
     <LinearGradient
       colors={['#6366F1', '#F472B6']}
@@ -21,10 +24,10 @@ export default function HomeScreen({ navigation }) {
             Effortlessly split group expenses, track debts, and keep it fair for everyone.
           </Text>
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Login')}>
+            <TouchableOpacity style={styles.button} onPress={() => router.push('/login')}>
               <Text style={styles.buttonText}>Login</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.button, styles.registerButton]} onPress={() => navigation.navigate('Register')}>
+            <TouchableOpacity style={[styles.button, styles.registerButton]} onPress={() => router.push('/register')}>
               <Text style={styles.buttonText}>Register</Text>
             </TouchableOpacity>
           </View>
@@ -57,7 +60,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 8,
   },
- 
   logoCircle: {
     backgroundColor: '#F3F4F6',
     borderRadius: 100,
