@@ -4,28 +4,29 @@ const jwt = require('jsonwebtoken');
 
 exports.register = async (req, res) => {
   const { name, email, password } = req.body;
-  
+
   try {
     // Check if user already exists
-    const existingUser = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const { rows: existingUser } = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
     
-    if (existingUser.rows.length > 0) {
+    if (existingUser.length > 0) {
       return res.status(400).json({ message: 'User already exists' });
     }
-    
+
     // Hash password and create user
     const hashed = await bcrypt.hash(password, 10);
-    const newUser = await pool.query(
-      'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
+    const { rows: newUserResult } = await pool.query(
+      'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
       [name, email, hashed]
     );
-    
-    const user = newUser.rows[0];
-    
+
+    // Get inserted user
+    const { rows: newUser } = await pool.query('SELECT id, name, email FROM users WHERE id = ?', [newUserResult.insertId]);
+
     // Generate JWT token
-    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET);
-    res.json({ token, user });
-    
+    const token = jwt.sign({ id: newUser[0].id, email: newUser[0].email }, process.env.JWT_SECRET);
+    res.json({ token, user: newUser[0] });
+
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({ message: 'Registration failed' });
@@ -34,27 +35,27 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
-  
+
   try {
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    
-    if (result.rows.length === 0) {
+    const { rows: result } = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+
+    if (result.length === 0) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-    
-    const user = result.rows[0];
+
+    const user = result[0];
     const isValidPassword = await bcrypt.compare(password, user.password);
-    
+
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-    
+
     const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET);
-    res.json({ 
-      token, 
-      user: { id: user.id, name: user.name, email: user.email } 
+    res.json({
+      token,
+      user: { id: user.id, name: user.name, email: user.email }
     });
-    
+
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Login failed' });

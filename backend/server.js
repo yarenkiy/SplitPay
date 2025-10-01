@@ -7,7 +7,7 @@ const groupRoutes = require('./routes/groupRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 
 // Set default environment variables if not provided
-process.env.DB_URL = process.env.DB_URL || 'postgresql://postgres:password@localhost:5432/splitpay';
+process.env.DB_URL = process.env.DB_URL || 'mysql://root:password@localhost:3306/splitpay';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 
 const app = express();

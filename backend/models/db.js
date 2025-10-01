@@ -1,19 +1,36 @@
-const { Pool } = require('pg');
+const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// PostgreSQL connection pool
-const pool = new Pool({
-  connectionString: process.env.DB_URL || 'postgresql://postgres:password@localhost:5432/splitpay',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+// MySQL connection pool
+const connectionString = process.env.DB_URL || 'mysql://root:password@localhost:8889/splitpay';
+const mysqlPool = mysql.createPool(connectionString);
+
+// Provide a pg-like wrapper for compatibility: query, connect, end
+const pool = {
+  query: async (text, params = []) => {
+    const [rows] = await mysqlPool.execute(text, params);
+    return { rows };
+  },
+  connect: async () => {
+    const connection = await mysqlPool.getConnection();
+    return {
+      query: async (text, params = []) => {
+        const [rows] = await connection.execute(text, params);
+        return { rows };
+      },
+      release: () => connection.release()
+    };
+  },
+  end: async () => mysqlPool.end()
+};
 
 // Initialize database with tables
 const initializeDatabase = async () => {
   try {
-    // Create users table
+    // Users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
@@ -21,65 +38,50 @@ const initializeDatabase = async () => {
       )
     `);
 
-    // Create groups table
+    // Groups table (renamed to user_groups to avoid reserved keyword issue)
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS groups (
-        id SERIAL PRIMARY KEY,
+      CREATE TABLE IF NOT EXISTS user_groups (
+        id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         description TEXT,
         color VARCHAR(7) DEFAULT '#6366F1',
-        created_by INTEGER,
+        created_by INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (created_by) REFERENCES users (id)
+        CONSTRAINT fk_groups_created_by FOREIGN KEY (created_by) REFERENCES users (id)
       )
     `);
 
-    // Add color column if it doesn't exist
-    try {
-      await pool.query('ALTER TABLE groups ADD COLUMN IF NOT EXISTS color VARCHAR(7) DEFAULT \'#6366F1\'');
-    } catch (error) {
-      console.log('Color column already exists or error adding it:', error.message);
-    }
-
-    // Create group_members table
+    // Group members table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS group_members (
-        id SERIAL PRIMARY KEY,
-        group_id INTEGER,
-        user_id INTEGER,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        group_id INT,
+        user_id INT,
         joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (group_id) REFERENCES groups (id),
-        FOREIGN KEY (user_id) REFERENCES users (id)
+        CONSTRAINT fk_group_members_group FOREIGN KEY (group_id) REFERENCES user_groups (id),
+        CONSTRAINT fk_group_members_user FOREIGN KEY (user_id) REFERENCES users (id)
       )
     `);
 
-    // Create expenses table
+    // Expenses table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS expenses (
-        id SERIAL PRIMARY KEY,
-        group_id INTEGER,
-        user_id INTEGER,
-        paid_by INTEGER,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        group_id INT,
+        user_id INT,
+        paid_by INT,
         amount DECIMAL(10,2) NOT NULL,
         description TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (group_id) REFERENCES groups (id),
-        FOREIGN KEY (user_id) REFERENCES users (id),
-        FOREIGN KEY (paid_by) REFERENCES users (id)
+        CONSTRAINT fk_expenses_group FOREIGN KEY (group_id) REFERENCES user_groups (id),
+        CONSTRAINT fk_expenses_user FOREIGN KEY (user_id) REFERENCES users (id),
+        CONSTRAINT fk_expenses_paid_by FOREIGN KEY (paid_by) REFERENCES users (id)
       )
     `);
 
-    // Add missing columns to expenses table if they don't exist
-    try {
-      await pool.query('ALTER TABLE expenses ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users (id)');
-      await pool.query('ALTER TABLE expenses ADD COLUMN IF NOT EXISTS paid_by INTEGER REFERENCES users (id)');
-    } catch (error) {
-      console.log('Expenses columns already exist or error adding them:', error.message);
-    }
-
-    console.log('Database tables initialized successfully');
+    console.log('✅ Database tables initialized successfully');
   } catch (error) {
-    console.error('Error initializing database:', error);
+    console.error('❌ Error initializing database:', error);
     throw error;
   }
 };
