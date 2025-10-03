@@ -9,8 +9,7 @@ const getDashboardData = async (req, res) => {
     const summaryQuery = `
       SELECT 
         COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0) as total_debt,
-        COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) as total_credit,
-        COALESCE(SUM(amount), 0) as balance
+        COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) as total_credit
       FROM expenses 
       WHERE user_id = ?
     `;
@@ -18,19 +17,23 @@ const getDashboardData = async (req, res) => {
     const summaryResult = await pool.query(summaryQuery, [userId]);
     const summary = summaryResult.rows[0];
     
+    // Calculate balance: credit - debt (positive means you get money, negative means you owe)
+    const balance = parseFloat(summary.total_credit) - parseFloat(summary.total_debt);
+    
     // Get user groups
     const groupsQuery = `
       SELECT 
         g.id,
         g.name,
         g.color,
+        g.invite_code,
         COUNT(DISTINCT gm.user_id) as member_count,
         COALESCE(SUM(e.amount), 0) as user_balance
       FROM \`groups\` g
       JOIN group_members gm ON g.id = gm.group_id
       LEFT JOIN expenses e ON g.id = e.group_id AND e.user_id = ?
       WHERE gm.user_id = ?
-      GROUP BY g.id, g.name, g.color
+      GROUP BY g.id, g.name, g.color, g.invite_code
       ORDER BY g.created_at DESC
     `;
     
@@ -56,7 +59,7 @@ const getDashboardData = async (req, res) => {
         SELECT group_id FROM group_members WHERE user_id = ?
       )
       ORDER BY e.created_at DESC
-      LIMIT 10
+      LIMIT 6
     `;
     
     const activitiesResult = await pool.query(activitiesQuery, [userId, userId]);
@@ -67,14 +70,15 @@ const getDashboardData = async (req, res) => {
         summary: {
           totalDebt: parseFloat(summary.total_debt),
           totalCredit: parseFloat(summary.total_credit),
-          balance: parseFloat(summary.balance)
+          balance: balance
         },
         groups: groupsResult.rows.map(group => ({
           id: group.id,
           name: group.name,
           debt: parseFloat(group.user_balance),
           members: group.member_count,
-          color: group.color
+          color: group.color,
+          inviteCode: group.invite_code
         })),
         activities: activitiesResult.rows.map(activity => ({
           id: activity.id,
@@ -101,8 +105,7 @@ const getSummary = async (req, res) => {
     const query = `
       SELECT 
         COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0) as total_debt,
-        COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) as total_credit,
-        COALESCE(SUM(amount), 0) as balance
+        COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) as total_credit
       FROM expenses 
       WHERE user_id = ?
     `;
@@ -110,12 +113,15 @@ const getSummary = async (req, res) => {
     const result = await pool.query(query, [userId]);
     const summary = result.rows[0];
     
+    // Calculate balance: credit - debt
+    const balance = parseFloat(summary.total_credit) - parseFloat(summary.total_debt);
+    
     res.json({
       success: true,
       data: {
         totalDebt: parseFloat(summary.total_debt),
         totalCredit: parseFloat(summary.total_credit),
-        balance: parseFloat(summary.balance)
+        balance: balance
       }
     });
   } catch (error) {
@@ -134,13 +140,14 @@ const getUserGroups = async (req, res) => {
         g.id,
         g.name,
         g.color,
+        g.invite_code,
         COUNT(DISTINCT gm.user_id) as member_count,
         COALESCE(SUM(e.amount), 0) as user_balance
       FROM \`groups\` g
       JOIN group_members gm ON g.id = gm.group_id
       LEFT JOIN expenses e ON g.id = e.group_id AND e.user_id = ?
       WHERE gm.user_id = ?
-      GROUP BY g.id, g.name, g.color
+      GROUP BY g.id, g.name, g.color, g.invite_code
       ORDER BY g.created_at DESC
     `;
     
@@ -153,7 +160,8 @@ const getUserGroups = async (req, res) => {
         name: group.name,
         debt: parseFloat(group.user_balance),
         members: group.member_count,
-        color: group.color
+        color: group.color,
+        inviteCode: group.invite_code
       }))
     });
   } catch (error) {
@@ -186,7 +194,7 @@ const getRecentActivities = async (req, res) => {
         SELECT group_id FROM group_members WHERE user_id = ?
       )
       ORDER BY e.created_at DESC
-      LIMIT 10
+      LIMIT 6
     `;
     
     const result = await pool.query(query, [userId, userId]);

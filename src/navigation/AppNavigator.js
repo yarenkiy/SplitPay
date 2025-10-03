@@ -42,8 +42,8 @@ function DashboardTabs() {
             iconName = focused ? 'people' : 'people-outline';
           } else if (route.name === 'Yeni Harcama') {
             iconName = focused ? 'add-circle' : 'add-circle-outline';
-          } else if (route.name === 'Özet') {
-            iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+          } else if (route.name === 'My Groups') {
+            iconName = focused ? 'briefcase' : 'briefcase-outline';
           } else if (route.name === 'Ayarlar') {
             iconName = focused ? 'settings' : 'settings-outline';
           }
@@ -65,7 +65,7 @@ function DashboardTabs() {
     >
       <Tab.Screen name="Ana Sayfa" component={HomeStackScreen} />
       <Tab.Screen name="Gruplar" component={GroupsScreen} />
-      <Tab.Screen name="Özet" component={SummaryScreen} />
+      <Tab.Screen name="My Groups" component={SummaryScreen} />
       <Tab.Screen name="Ayarlar" component={SettingsScreen} />
     </Tab.Navigator>
   );

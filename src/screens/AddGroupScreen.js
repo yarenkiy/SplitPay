@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
-    SafeAreaView,
+    KeyboardAvoidingView,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -17,344 +20,412 @@ export default function AddGroupScreen() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [color, setColor] = useState('#6366F1');
+  const [selectedEmoji, setSelectedEmoji] = useState('👥');
+  const [color, setColor] = useState('#0EA5E9');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [selectedUserIds, setSelectedUserIds] = useState({});
-  const [searching, setSearching] = useState(false);
 
-  const presetColors = ['#6366F1', '#F472B6', '#4ECDC4', '#FF6B6B', '#FFA726', '#45B7D1'];
+  const groupTypes = [
+    { emoji: '🏖️', label: 'Holiday', color: '#0EA5E9' },
+    { emoji: '✈️', label: 'Trip', color: '#3B82F6' },
+    { emoji: '🏠', label: 'Home', color: '#10B981' },
+    { emoji: '🍽️', label: 'Food', color: '#F59E0B' },
+    { emoji: '🎉', label: 'Party', color: '#EC4899' },
+    { emoji: '🎓', label: 'School', color: '#8B5CF6' },
+    { emoji: '💼', label: 'Work', color: '#6366F1' },
+    { emoji: '👥', label: 'Friends', color: '#14B8A6' },
+    { emoji: '💪', label: 'Gym', color: '#EF4444' },
+    { emoji: '🎮', label: 'Gaming', color: '#A855F7' },
+    { emoji: '⚽', label: 'Sports', color: '#22C55E' },
+    { emoji: '🎵', label: 'Music', color: '#F97316' },
+  ];
+
+  const presetColors = [
+    '#0EA5E9', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', 
+    '#F59E0B', '#10B981', '#14B8A6', '#EF4444', '#F97316'
+  ];
 
   const validate = () => {
-    const newErrors = {};
-    if (!name.trim()) newErrors.name = 'Grup adı zorunludur';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (!name.trim()) {
+      Alert.alert('Required', 'Please enter a group name');
+      return false;
+    }
+    return true;
   };
 
   const handleCreate = async () => {
     if (!validate()) return;
+    
     setIsSubmitting(true);
     try {
       const { groupAPI } = await import('../services/api');
-      const memberIds = Object.keys(selectedUserIds).filter(id => selectedUserIds[id]).map(id => Number(id));
-      const res = await groupAPI.createGroup({ name: name.trim(), description: description.trim() || null, color, members: memberIds });
-      if (res?.data?.id) {
-        Alert.alert('Başarılı', 'Grup oluşturuldu', [
-          {
-            text: 'Tamam',
-            onPress: () => {
-              router.back();
+      const res = await groupAPI.createGroup({ 
+        name: `${selectedEmoji} ${name.trim()}`, 
+        description: description.trim() || null, 
+        color 
+      });
+      
+      if (res?.data?.id && res?.data?.invite_code) {
+        Alert.alert(
+          'Success! 🎉',
+          `Group created!\nInvite Code: ${res.data.invite_code}\n\nShare this code with friends to join the group!`,
+          [
+            {
+              text: 'Done',
+              onPress: () => router.back(),
             },
-          },
-        ]);
+          ]
+        );
       } else {
-        Alert.alert('Hata', 'Grup oluşturulamadı');
+        Alert.alert('Error', 'Failed to create group');
       }
     } catch (e) {
-      Alert.alert('Hata', 'Grup oluşturulurken bir hata oluştu');
+      console.error('Create group error:', e);
+      Alert.alert('Error', 'An error occurred while creating the group');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  useEffect(() => {
-    let active = true;
-    const run = async () => {
-      const q = query.trim();
-      if (!q) {
-        if (active) setResults([]);
-        return;
-      }
-      try {
-        setSearching(true);
-        const { groupAPI } = await import('../services/api');
-        const res = await groupAPI.searchUsers(q);
-        if (!active) return;
-        setResults(res.data || []);
-      } catch (_) {
-        if (active) setResults([]);
-      } finally {
-        if (active) setSearching(false);
-      }
-    };
-    const t = setTimeout(run, 300);
-    return () => { active = false; clearTimeout(t); };
-  }, [query]);
-
-  const toggleSelect = (userId) => {
-    setSelectedUserIds(prev => ({ ...prev, [userId]: !prev[userId] }));
+  const selectGroupType = (type) => {
+    setSelectedEmoji(type.emoji);
+    setColor(type.color);
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#6366F1" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Yeni Grup</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.section}>
-          <Text style={styles.label}>Grup Adı</Text>
-          <TextInput
-            value={name}
-            onChangeText={(t) => {
-              setName(t);
-              if (t) setErrors((prev) => ({ ...prev, name: null }));
-            }}
-            style={[styles.input, errors.name && styles.errorInput]}
-            placeholder="Örn: Ev arkadaşları"
-            placeholderTextColor="#9CA3AF"
-          />
-          {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#0EA5E9', '#3B82F6']}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Create New Group</Text>
+          <View style={{ width: 40 }} />
         </View>
+      </LinearGradient>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Üye ara (isim ya da email)</Text>
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            style={styles.input}
-            placeholder="kullanıcı adı veya email"
-            placeholderTextColor="#9CA3AF"
-          />
-          {!!results.length && (
-            <View style={{ marginTop: 12 }}>
-              {results.map(u => (
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Group Type Selection */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="apps" size={20} color="#0EA5E9" />
+              <Text style={styles.sectionTitle}>Group Type</Text>
+            </View>
+            <View style={styles.typeGrid}>
+              {groupTypes.map((type) => (
                 <TouchableOpacity
-                  key={u.id}
-                  style={[styles.userRow, selectedUserIds[u.id] && styles.userRowSelected]}
-                  onPress={() => toggleSelect(u.id)}
-                  activeOpacity={0.7}
+                  key={type.emoji}
+                  style={[
+                    styles.typeCard,
+                    selectedEmoji === type.emoji && styles.typeCardSelected,
+                    { borderColor: selectedEmoji === type.emoji ? type.color : '#e2e8f0' }
+                  ]}
+                  onPress={() => selectGroupType(type)}
                 >
-                  <View style={[styles.avatar, selectedUserIds[u.id] && styles.avatarSelected]}>
-                    <Text style={[styles.avatarInitial, selectedUserIds[u.id] && styles.avatarInitialSelected]}>
-                      {(u.name || u.email).charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.userName}>{u.name || 'İsimsiz'}</Text>
-                    <Text style={styles.userEmail}>{u.email}</Text>
-                  </View>
-                  {selectedUserIds[u.id] && <Ionicons name="checkmark-circle" size={20} color="#6366F1" />}
+                  <Text style={styles.typeEmoji}>{type.emoji}</Text>
+                  <Text style={[
+                    styles.typeLabel,
+                    selectedEmoji === type.emoji && { color: type.color }
+                  ]}>
+                    {type.label}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Açıklama (opsiyonel)</Text>
-          <TextInput
-            value={description}
-            onChangeText={setDescription}
-            style={styles.textarea}
-            placeholder="Kısa açıklama..."
-            placeholderTextColor="#9CA3AF"
-            multiline
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Renk</Text>
-          <View style={styles.colorRow}>
-            {presetColors.map((c) => (
-              <TouchableOpacity
-                key={c}
-                style={[styles.colorDot, { backgroundColor: c }, color === c && styles.colorDotSelected]}
-                onPress={() => setColor(c)}
-                activeOpacity={0.7}
-              />
-            ))}
           </View>
-        </View>
 
-        <TouchableOpacity
-          style={[styles.createButton, isSubmitting && styles.createButtonDisabled]}
-          onPress={handleCreate}
-          disabled={isSubmitting}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="people" size={20} color="white" />
-          <Text style={styles.createButtonText}>{isSubmitting ? 'Oluşturuluyor...' : 'Grup Oluştur'}</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+          {/* Group Name */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="text" size={20} color="#0EA5E9" />
+              <Text style={styles.sectionTitle}>Group Name</Text>
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.emojiPrefix}>{selectedEmoji}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter group name"
+                placeholderTextColor="#94a3b8"
+                value={name}
+                onChangeText={setName}
+              />
+            </View>
+          </View>
+
+          {/* Description (Optional) */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="document-text" size={20} color="#0EA5E9" />
+              <Text style={styles.sectionTitle}>Description (Optional)</Text>
+            </View>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Add a description..."
+              placeholderTextColor="#94a3b8"
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+
+          {/* Color Selection */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="color-palette" size={20} color="#0EA5E9" />
+              <Text style={styles.sectionTitle}>Group Color</Text>
+            </View>
+            <View style={styles.colorGrid}>
+              {presetColors.map((c) => (
+                <TouchableOpacity
+                  key={c}
+                  style={[
+                    styles.colorOption,
+                    { backgroundColor: c },
+                    color === c && styles.colorSelected
+                  ]}
+                  onPress={() => setColor(c)}
+                >
+                  {color === c && (
+                    <Ionicons name="checkmark" size={20} color="#fff" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Info Box */}
+          <View style={styles.infoBox}>
+            <Ionicons name="information-circle" size={24} color="#0EA5E9" />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoTitle}>How it works</Text>
+              <Text style={styles.infoText}>
+                A unique 6-character invite code will be generated for your group. Share it with friends so they can join!
+              </Text>
+            </View>
+          </View>
+
+          {/* Create Button */}
+          <TouchableOpacity
+            style={[styles.createButton, isSubmitting && styles.createButtonDisabled]}
+            onPress={handleCreate}
+            disabled={isSubmitting}
+          >
+            <LinearGradient
+              colors={['#0EA5E9', '#3B82F6']}
+              style={styles.createButtonGradient}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="add-circle" size={24} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.createButtonText}>Create Group</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#f8fafc',
+  },
+  headerGradient: {
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    justifyContent: 'space-between',
   },
   backButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    textAlign: 'center',
-    marginHorizontal: 16,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
   },
-  headerSpacer: {
-    width: 40,
-  },
-  content: {
+  scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 30,
+    padding: 20,
   },
   section: {
-    marginTop: 25,
+    marginBottom: 24,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 10,
-  },
-  input: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    fontSize: 16,
-    color: '#1F2937',
-  },
-  textarea: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    fontSize: 16,
-    color: '#1F2937',
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  errorInput: {
-    borderColor: '#EF4444',
-    backgroundColor: '#FEF2F2',
-  },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 14,
-    fontWeight: '500',
-    marginTop: 8,
-    marginLeft: 4,
-  },
-  colorRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  colorDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-  },
-  colorDotSelected: {
-    borderColor: '#6366F1',
-    shadowColor: '#6366F1',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  createButton: {
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#6366F1',
-    borderRadius: 16,
-    paddingVertical: 16,
-    marginTop: 40,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
+    marginBottom: 12,
     gap: 8,
   },
-  createButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-    shadowOpacity: 0.1,
-  },
-  createButtonText: {
-    color: 'white',
+  sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
+    color: '#1e293b',
   },
-  userRow: {
+  typeGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    marginBottom: 10,
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  userRowSelected: {
-    borderColor: '#6366F1',
-    backgroundColor: '#F0F4FF',
-  },
-  avatar: {
-    width: 32,
-    height: 32,
+  typeCard: {
+    width: '22%',
+    aspectRatio: 1,
+    backgroundColor: '#fff',
     borderRadius: 16,
-    backgroundColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    shadowColor: '#0EA5E9',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  avatarSelected: {
-    backgroundColor: '#6366F1',
+  typeCardSelected: {
+    backgroundColor: '#f0f9ff',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  avatarInitial: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#6B7280',
+  typeEmoji: {
+    fontSize: 28,
+    marginBottom: 4,
   },
-  avatarInitialSelected: {
-    color: 'white',
-  },
-  userName: {
-    fontSize: 14,
+  typeLabel: {
+    fontSize: 11,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#64748b',
   },
-  userEmail: {
-    fontSize: 12,
-    color: '#6B7280',
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+  },
+  emojiPrefix: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1e293b',
+    paddingVertical: 14,
+    fontWeight: '500',
+  },
+  textArea: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    textAlignVertical: 'top',
+    minHeight: 100,
+  },
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  colorOption: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  colorSelected: {
+    borderWidth: 3,
+    borderColor: '#fff',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  infoBox: {
+    flexDirection: 'row',
+    backgroundColor: '#e0f2fe',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    gap: 12,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0369a1',
+    marginBottom: 4,
+  },
+  infoText: {
+    fontSize: 13,
+    color: '#075985',
+    lineHeight: 18,
+  },
+  createButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 20,
+    shadowColor: '#0EA5E9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  createButtonDisabled: {
+    opacity: 0.6,
+  },
+  createButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+  },
+  createButtonText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#fff',
   },
 });
-
-

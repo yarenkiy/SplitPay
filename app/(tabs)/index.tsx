@@ -1,3 +1,6 @@
-import HomeScreen from '../../src/screens/HomeScreen';
+import React from 'react';
+import DashboardScreen from '../../src/screens/DashboardScreen';
 
-export default HomeScreen;
+export default function HomeTab() {
+  return <DashboardScreen />;
+}

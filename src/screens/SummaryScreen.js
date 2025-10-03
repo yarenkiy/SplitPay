@@ -1,456 +1,684 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    SafeAreaView,
+    ActivityIndicator,
+    Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSelectedGroup } from '../context/SelectedGroupContext';
+import { dashboardAPI, groupAPI } from '../services/api';
 
 export default function SummaryScreen() {
-  const summaryData = {
-    totalDebt: 1250,
-    totalCredit: 890,
-    balance: -360,
-    totalExpenses: 5400,
-    totalGroups: 4,
-    totalMembers: 12,
+  const [isLoading, setIsLoading] = useState(true);
+  const [groups, setGroups] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [groupDetails, setGroupDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const { selectedGroupId, setSelectedGroupId } = useSelectedGroup();
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchGroups();
+    }, [])
+  );
+
+  // When selectedGroupId changes from context, auto-select that group
+  useEffect(() => {
+    if (selectedGroupId && groups.length > 0) {
+      const group = groups.find(g => g.id === selectedGroupId);
+      if (group) {
+        handleGroupSelect(group);
+        // Clear the selected ID after handling
+        setSelectedGroupId(null);
+      }
+    }
+  }, [selectedGroupId, groups]);
+
+  const fetchGroups = async () => {
+    try {
+      setIsLoading(true);
+      const response = await dashboardAPI.getUserGroups();
+      if (response.data && response.data.success) {
+        setGroups(response.data.data || []);
+      } else {
+        setGroups([]);
+      }
+    } catch (error) {
+      console.error('Fetch groups error:', error);
+      setGroups([]);
+      Alert.alert('Error', 'Failed to load groups');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const monthlyData = [
-    { month: 'Ocak', expenses: 1200, color: '#FF6B6B' },
-    { month: 'Şubat', expenses: 800, color: '#4ECDC4' },
-    { month: 'Mart', expenses: 1400, color: '#45B7D1' },
-    { month: 'Nisan', expenses: 1000, color: '#FFA726' },
-    { month: 'Mayıs', expenses: 1600, color: '#9C27B0' },
-    { month: 'Haziran', expenses: 900, color: '#607D8B' },
-  ];
+  const fetchGroupDetails = async (groupId) => {
+    try {
+      setLoadingDetails(true);
+      const response = await groupAPI.getGroupDetails(groupId);
+      if (response.data.success) {
+        setGroupDetails(response.data.data);
+      }
+    } catch (error) {
+      console.error('Fetch group details error:', error);
+      Alert.alert('Error', 'Failed to load group details');
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
 
-  const categoryData = [
-    { name: 'Yemek', amount: 2400, percentage: 44, color: '#FF6B6B' },
-    { name: 'Ulaşım', amount: 1200, percentage: 22, color: '#4ECDC4' },
-    { name: 'Eğlence', amount: 900, percentage: 17, color: '#45B7D1' },
-    { name: 'Alışveriş', amount: 600, percentage: 11, color: '#FFA726' },
-    { name: 'Diğer', amount: 300, percentage: 6, color: '#9C27B0' },
-  ];
+  const handleGroupSelect = (group) => {
+    setSelectedGroup(group);
+    fetchGroupDetails(group.id);
+  };
 
-  const topDebtors = [
-    { name: 'Yaren', amount: 450, group: 'Antalya Tatili' },
-    { name: 'Ahmet', amount: 320, group: 'Ev Arkadaşları' },
-    { name: 'Selen', amount: 280, group: 'Market Gideri' },
-    { name: 'Mehmet', amount: 200, group: 'Sinema Gecesi' },
-  ];
+  const handleBackToGroups = () => {
+    setSelectedGroup(null);
+    setGroupDetails(null);
+  };
 
-  const renderStatCard = (title, value, subtitle, icon, color) => (
-    <View style={styles.statCard}>
-      <View style={styles.statHeader}>
-        <View style={[styles.statIcon, { backgroundColor: color }]}>
-          <Ionicons name={icon} size={20} color="white" />
+  const renderGroupCard = (group) => (
+    <TouchableOpacity
+      key={group.id}
+      style={styles.groupCard}
+      onPress={() => handleGroupSelect(group)}
+    >
+      <View style={styles.groupCardHeader}>
+        <View style={[styles.groupColor, { backgroundColor: group.color }]} />
+        <View style={styles.groupCardInfo}>
+          <Text style={styles.groupCardName}>{group.name}</Text>
+          <Text style={styles.groupCardMembers}>
+            {group.members} member{group.members !== 1 ? 's' : ''}
+          </Text>
         </View>
-        <Text style={styles.statTitle}>{title}</Text>
+        <Ionicons name="chevron-forward" size={24} color="#64748b" />
       </View>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={styles.statSubtitle}>{subtitle}</Text>
-    </View>
+      <View style={styles.groupCardFooter}>
+        <Text style={styles.groupCardLabel}>Your Balance</Text>
+        <Text style={[
+          styles.groupCardBalance,
+          { color: group.debt > 0 ? '#ef4444' : group.debt < 0 ? '#10b981' : '#64748b' }
+        ]}>
+          ₺{Math.abs(group.debt).toLocaleString()}
+        </Text>
+      </View>
+    </TouchableOpacity>
   );
 
-  const renderMonthlyBar = (data, index) => (
-    <View key={index} style={styles.monthlyBarContainer}>
-      <View style={styles.monthlyBarWrapper}>
-        <View
-          style={[
-            styles.monthlyBar,
-            {
-              height: (data.expenses / 1600) * 100,
-              backgroundColor: data.color,
-            },
-          ]}
-        />
+  const renderGroupsList = () => (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <LinearGradient
+        colors={['#0EA5E9', '#3B82F6']}
+        style={styles.headerGradient}
+      >
+        <Text style={styles.headerTitle}>My Groups</Text>
+        <Text style={styles.headerSubtitle}>Select a group to view details</Text>
+      </LinearGradient>
+
+      <View style={styles.content}>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0EA5E9" />
+            <Text style={styles.loadingText}>Loading groups...</Text>
+          </View>
+        ) : groups.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="people-outline" size={80} color="#cbd5e1" />
+            <Text style={styles.emptyText}>No groups yet</Text>
+            <Text style={styles.emptySubtext}>Create or join a group to get started</Text>
+          </View>
+        ) : (
+          <View style={styles.groupsList}>
+            {groups.map(renderGroupCard)}
+          </View>
+        )}
       </View>
-      <Text style={styles.monthlyLabel}>{data.month}</Text>
-      <Text style={styles.monthlyAmount}>₺{data.expenses}</Text>
-    </View>
+    </ScrollView>
   );
 
-  const renderCategoryItem = (category) => (
-    <View key={category.name} style={styles.categoryItem}>
-      <View style={styles.categoryInfo}>
-        <View style={[styles.categoryColor, { backgroundColor: category.color }]} />
-        <View style={styles.categoryDetails}>
-          <Text style={styles.categoryName}>{category.name}</Text>
-          <Text style={styles.categoryAmount}>₺{category.amount}</Text>
-        </View>
-      </View>
-      <View style={styles.categoryPercentage}>
-        <View style={styles.percentageBar}>
-          <View
-            style={[
-              styles.percentageFill,
-              {
-                width: `${category.percentage}%`,
-                backgroundColor: category.color,
-              },
-            ]}
-          />
-        </View>
-        <Text style={styles.percentageText}>{category.percentage}%</Text>
-      </View>
-    </View>
-  );
-
-  const renderDebtorItem = (debtor, index) => (
-    <View key={debtor.name} style={styles.debtorItem}>
-      <View style={styles.debtorRank}>
-        <Text style={styles.rankNumber}>{index + 1}</Text>
-      </View>
-      <View style={styles.debtorInfo}>
-        <Text style={styles.debtorName}>{debtor.name}</Text>
-        <Text style={styles.debtorGroup}>{debtor.group}</Text>
-      </View>
-      <View style={styles.debtorAmount}>
-        <Text style={styles.debtorAmountText}>₺{debtor.amount}</Text>
-      </View>
-    </View>
-  );
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Finansal Özet</Text>
-        <TouchableOpacity style={styles.shareButton}>
-          <Ionicons name="share" size={24} color="#6366F1" />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Main Stats */}
-        <View style={styles.statsGrid}>
-          {renderStatCard(
-            'Toplam Borç',
-            `₺${summaryData.totalDebt}`,
-            'Senin başkalarına borcun',
-            'arrow-down',
-            '#FF6B6B'
-          )}
-          {renderStatCard(
-            'Toplam Alacak',
-            `₺${summaryData.totalCredit}`,
-            'Başkalarının sana borcu',
-            'arrow-up',
-            '#4ECDC4'
-          )}
-          {renderStatCard(
-            'Bakiye',
-            `₺${summaryData.balance}`,
-            'Alacak - Borç',
-            'wallet',
-            summaryData.balance >= 0 ? '#4ECDC4' : '#FF6B6B'
-          )}
-          {renderStatCard(
-            'Toplam Harcama',
-            `₺${summaryData.totalExpenses}`,
-            'Tüm gruplarda',
-            'stats-chart',
-            '#6366F1'
-          )}
-        </View>
-
-        {/* Monthly Chart */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Aylık Harcamalar</Text>
-          <View style={styles.monthlyChart}>
-            {monthlyData.map(renderMonthlyBar)}
+  const renderGroupDetails = () => {
+    if (loadingDetails) {
+      return (
+        <View style={styles.container}>
+          <View style={styles.detailsHeader}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBackToGroups}>
+              <Ionicons name="arrow-back" size={24} color="#0EA5E9" />
+            </TouchableOpacity>
+            <Text style={styles.detailsHeaderTitle}>{selectedGroup.name}</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0EA5E9" />
+            <Text style={styles.loadingText}>Loading details...</Text>
           </View>
         </View>
+      );
+    }
 
-        {/* Category Breakdown */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Kategori Dağılımı</Text>
-          <View style={styles.categoryList}>
-            {categoryData.map(renderCategoryItem)}
+    if (!groupDetails) return null;
+
+    return (
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <LinearGradient
+          colors={[selectedGroup.color || '#0EA5E9', '#3B82F6']}
+          style={styles.detailsHeaderGradient}
+        >
+          <View style={styles.detailsHeader}>
+            <TouchableOpacity style={styles.backButtonWhite} onPress={handleBackToGroups}>
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.detailsHeaderInfo}>
+              <Text style={styles.detailsHeaderTitle}>{groupDetails.group.name}</Text>
+              {groupDetails.group.description && (
+                <Text style={styles.detailsHeaderSubtitle}>{groupDetails.group.description}</Text>
+              )}
+            </View>
+            <View style={{ width: 40 }} />
           </View>
-        </View>
 
-        {/* Top Debtors */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>En Çok Borçlu Olanlar</Text>
-          <View style={styles.debtorsList}>
-            {topDebtors.map(renderDebtorItem)}
+          <View style={styles.inviteCodeBox}>
+            <Ionicons name="key" size={20} color="#fff" />
+            <View style={styles.inviteCodeInfo}>
+              <Text style={styles.inviteCodeLabel}>Invite Code</Text>
+              <Text style={styles.inviteCodeValue}>{groupDetails.group.inviteCode}</Text>
+            </View>
           </View>
-        </View>
+        </LinearGradient>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.quickAction}>
-            <Ionicons name="download" size={20} color="#6366F1" />
-            <Text style={styles.quickActionText}>PDF İndir</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickAction}>
-            <Ionicons name="mail" size={20} color="#4ECDC4" />
-            <Text style={styles.quickActionText}>E-posta Gönder</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickAction}>
-            <Ionicons name="print" size={20} color="#FF6B6B" />
-            <Text style={styles.quickActionText}>Yazdır</Text>
-          </TouchableOpacity>
+        <View style={styles.content}>
+          {/* Summary Stats */}
+          <View style={styles.summaryGrid}>
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryHeader}>
+                <Ionicons name="arrow-up-circle" size={24} color="#10b981" />
+                <Text style={styles.summaryLabel}>Total Income</Text>
+              </View>
+              <Text style={[styles.summaryValue, { color: '#10b981' }]}>
+                ₺{groupDetails.summary.totalIncome.toLocaleString()}
+              </Text>
+            </View>
+
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryHeader}>
+                <Ionicons name="arrow-down-circle" size={24} color="#ef4444" />
+                <Text style={styles.summaryLabel}>Total Expenses</Text>
+              </View>
+              <Text style={[styles.summaryValue, { color: '#ef4444' }]}>
+                ₺{groupDetails.summary.totalExpenses.toLocaleString()}
+              </Text>
+            </View>
+
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryHeader}>
+                <Ionicons name="people" size={24} color="#3b82f6" />
+                <Text style={styles.summaryLabel}>Members</Text>
+              </View>
+              <Text style={[styles.summaryValue, { color: '#3b82f6' }]}>
+                {groupDetails.summary.memberCount}
+              </Text>
+            </View>
+
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryHeader}>
+                <Ionicons name="receipt" size={24} color="#8b5cf6" />
+                <Text style={styles.summaryLabel}>Expenses</Text>
+              </View>
+              <Text style={[styles.summaryValue, { color: '#8b5cf6' }]}>
+                {groupDetails.summary.expenseCount}
+              </Text>
+            </View>
+          </View>
+
+          {/* Members Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="people" size={20} color="#0EA5E9" />
+              <Text style={styles.sectionTitle}>Members</Text>
+            </View>
+            <View style={styles.card}>
+              {groupDetails.members.map((member, index) => (
+                <View key={member.id} style={[
+                  styles.memberItem,
+                  index !== groupDetails.members.length - 1 && styles.memberItemBorder
+                ]}>
+                  <View style={styles.memberAvatar}>
+                    <Text style={styles.memberAvatarText}>
+                      {member.name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>{member.name}</Text>
+                    <Text style={styles.memberEmail}>{member.email}</Text>
+                  </View>
+                  <View style={styles.memberBalance}>
+                    <Text style={[
+                      styles.memberBalanceText,
+                      { color: member.balance > 0 ? '#ef4444' : member.balance < 0 ? '#10b981' : '#64748b' }
+                    ]}>
+                      {member.balance > 0 ? '+' : ''}₺{Math.abs(member.balance).toLocaleString()}
+                    </Text>
+                    <Text style={styles.memberBalanceLabel}>
+                      {member.balance > 0 ? 'owes' : member.balance < 0 ? 'gets back' : 'settled'}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Who Owes Whom Section */}
+          {groupDetails.balances.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="git-compare" size={20} color="#0EA5E9" />
+                <Text style={styles.sectionTitle}>Who Owes Whom</Text>
+              </View>
+              <View style={styles.card}>
+                {groupDetails.balances.map((balance, index) => (
+                  <View key={index} style={[
+                    styles.balanceItem,
+                    index !== groupDetails.balances.length - 1 && styles.memberItemBorder
+                  ]}>
+                    <View style={styles.balanceFlow}>
+                      <Text style={styles.balanceFromName}>{balance.from}</Text>
+                      <Ionicons name="arrow-forward" size={20} color="#0EA5E9" />
+                      <Text style={styles.balanceToName}>{balance.to}</Text>
+                    </View>
+                    <View style={styles.balanceAmountBox}>
+                      <Text style={styles.balanceAmount}>₺{balance.amount.toLocaleString()}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Recent Expenses Section */}
+          {groupDetails.recentExpenses.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="receipt" size={20} color="#0EA5E9" />
+                <Text style={styles.sectionTitle}>Recent Expenses</Text>
+              </View>
+              <View style={styles.card}>
+                {groupDetails.recentExpenses.map((expense, index) => (
+                  <View key={expense.id} style={[
+                    styles.expenseItem,
+                    index !== groupDetails.recentExpenses.length - 1 && styles.memberItemBorder
+                  ]}>
+                    <View style={styles.expenseInfo}>
+                      <Text style={styles.expenseDescription}>{expense.description}</Text>
+                      <Text style={styles.expenseDetail}>
+                        Paid by {expense.paidByName} → {expense.userName}
+                      </Text>
+                      <Text style={styles.expenseDate}>
+                        {new Date(expense.createdAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <Text style={[
+                      styles.expenseAmount,
+                      { color: expense.amount > 0 ? '#ef4444' : '#10b981' }
+                    ]}>
+                      {expense.amount > 0 ? '+' : ''}₺{Math.abs(expense.amount).toLocaleString()}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
         </View>
       </ScrollView>
-    </SafeAreaView>
-  );
+    );
+  };
+
+  return selectedGroup ? renderGroupDetails() : renderGroupsList();
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#f8fafc',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+  headerGradient: {
+    paddingTop: 60,
+    paddingBottom: 30,
+    paddingHorizontal: 24,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 8,
   },
-  shareButton: {
-    padding: 8,
+  headerSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
   },
   content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginTop: 20,
-    gap: 15,
-  },
-  statCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
     padding: 20,
-    width: '47%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  statHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
-    marginRight: 8,
+    alignItems: 'center',
+    paddingVertical: 60,
   },
-  statTitle: {
-    fontSize: 14,
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748b',
     fontWeight: '600',
-    color: '#6B7280',
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  statSubtitle: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  section: {
-    marginTop: 30,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 20,
-  },
-  monthlyChart: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    height: 200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  monthlyBarContainer: {
+  emptyContainer: {
     alignItems: 'center',
-    flex: 1,
+    paddingVertical: 60,
   },
-  monthlyBarWrapper: {
-    height: 100,
-    justifyContent: 'flex-end',
-    marginBottom: 8,
+  emptyText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#64748b',
+    marginTop: 16,
   },
-  monthlyBar: {
-    width: 20,
-    borderRadius: 10,
-    minHeight: 4,
+  emptySubtext: {
+    fontSize: 14,
+    color: '#94a3b8',
+    marginTop: 8,
   },
-  monthlyLabel: {
-    fontSize: 10,
-    color: '#6B7280',
-    textAlign: 'center',
+  groupsList: {
+    gap: 16,
   },
-  monthlyAmount: {
-    fontSize: 10,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  categoryList: {
-    backgroundColor: 'white',
-    borderRadius: 16,
+  groupCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#0EA5E9',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
-  categoryItem: {
-    marginBottom: 15,
-  },
-  categoryInfo: {
+  groupCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
   },
-  categoryColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  groupColor: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     marginRight: 12,
   },
-  categoryDetails: {
+  groupCardInfo: {
     flex: 1,
   },
-  categoryName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
+  groupCardName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 4,
   },
-  categoryAmount: {
-    fontSize: 12,
-    color: '#6B7280',
+  groupCardMembers: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '500',
   },
-  categoryPercentage: {
+  groupCardFooter: {
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  percentageBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 3,
-    marginRight: 10,
-  },
-  percentageFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  percentageText: {
-    fontSize: 12,
+  groupCardLabel: {
+    fontSize: 13,
+    color: '#64748b',
     fontWeight: '600',
-    color: '#6B7280',
-    minWidth: 30,
   },
-  debtorsList: {
-    backgroundColor: 'white',
+  groupCardBalance: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  detailsHeaderGradient: {
+    paddingTop: 50,
+    paddingBottom: 20,
+  },
+  detailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#e0f2fe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonWhite: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailsHeaderInfo: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  detailsHeaderTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  detailsHeaderSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  inviteCodeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 20,
+    gap: 12,
+  },
+  inviteCodeInfo: {
+    flex: 1,
+  },
+  inviteCodeLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '600',
+  },
+  inviteCodeValue: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 24,
+  },
+  summaryCard: {
+    width: '48%',
+    backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
   },
-  debtorItem: {
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  summaryValue: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  memberItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
-  debtorRank: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
+  memberItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  memberAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#e0f2fe',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  rankNumber: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#6366F1',
+  memberAvatarText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0EA5E9',
   },
-  debtorInfo: {
+  memberInfo: {
     flex: 1,
   },
-  debtorName: {
+  memberName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 2,
   },
-  debtorGroup: {
-    fontSize: 12,
-    color: '#6B7280',
+  memberEmail: {
+    fontSize: 13,
+    color: '#64748b',
   },
-  debtorAmount: {
+  memberBalance: {
     alignItems: 'flex-end',
   },
-  debtorAmountText: {
+  memberBalanceText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FF6B6B',
+    fontWeight: '800',
+    marginBottom: 2,
   },
-  quickActions: {
+  memberBalanceLabel: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '600',
+  },
+  balanceItem: {
+    paddingVertical: 16,
+  },
+  balanceFlow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 30,
-    marginBottom: 50,
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  quickAction: {
     alignItems: 'center',
-    paddingVertical: 10,
+    gap: 12,
+    marginBottom: 8,
   },
-  quickActionText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#374151',
-    marginTop: 4,
+  balanceFromName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1e293b',
+    flex: 1,
   },
-}); 
+  balanceToName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1e293b',
+    flex: 1,
+    textAlign: 'right',
+  },
+  balanceAmountBox: {
+    backgroundColor: '#f0f9ff',
+    borderRadius: 8,
+    padding: 8,
+    alignSelf: 'flex-start',
+  },
+  balanceAmount: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0EA5E9',
+  },
+  expenseItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  expenseInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  expenseDescription: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  expenseDetail: {
+    fontSize: 13,
+    color: '#64748b',
+    marginBottom: 2,
+  },
+  expenseDate: {
+    fontSize: 11,
+    color: '#94a3b8',
+  },
+  expenseAmount: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+});

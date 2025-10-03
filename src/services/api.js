@@ -34,11 +34,13 @@ export const groupAPI = {
   getGroups: () => api.get('/groups'),
   createGroup: (groupData) => api.post('/groups', groupData),
   getGroupById: (id) => api.get(`/groups/${id}`),
+  getGroupDetails: (groupId) => api.get(`/groups/${groupId}/details`),
   updateGroup: (id, groupData) => api.put(`/groups/${id}`, groupData),
   deleteGroup: (id) => api.delete(`/groups/${id}`),
   getGroupMembers: (groupId) => api.get(`/groups/${groupId}/members`),
   addExpense: (groupId, payload) => api.post(`/groups/${groupId}/expenses`, payload),
   searchUsers: (query) => api.get(`/groups/search/users`, { params: { q: query } }),
+  joinGroupByCode: (inviteCode) => api.post('/groups/join', { inviteCode }),
 };
 
 export const dashboardAPI = {

@@ -1,24 +1,31 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useContext, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Clipboard,
+  Modal,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
-import { dashboardAPI } from '../services/api';
+import { useSelectedGroup } from '../context/SelectedGroupContext';
+import { dashboardAPI, groupAPI } from '../services/api';
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { logout, user } = useContext(AuthContext);
+  const { setSelectedGroupId } = useSelectedGroup();
   
   console.log('DashboardScreen mounted');
   
@@ -30,6 +37,9 @@ export default function DashboardScreen() {
   });
   const [groups, setGroups] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
+  const [joinModalVisible, setJoinModalVisible] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
 
   // Ekran her göründüğünde verileri yenile
   useFocusEffect(
@@ -59,6 +69,32 @@ export default function DashboardScreen() {
     }
   };
 
+  const handleJoinGroup = async () => {
+    if (!inviteCode || inviteCode.trim().length !== 6) {
+      Alert.alert('Invalid Code', 'Please enter a valid 6-character invite code');
+      return;
+    }
+
+    try {
+      setIsJoining(true);
+      const response = await groupAPI.joinGroupByCode(inviteCode.trim().toUpperCase());
+      
+      if (response.data.success) {
+        Alert.alert('Success! 🎉', response.data.message);
+        setJoinModalVisible(false);
+        setInviteCode('');
+        // Refresh dashboard data to show new group
+        fetchDashboardData();
+      }
+    } catch (error) {
+      console.error('Join group error:', error);
+      const message = error.response?.data?.message || 'Failed to join group';
+      Alert.alert('Error', message);
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -67,22 +103,17 @@ export default function DashboardScreen() {
     }
   };
 
-  // 🔹 Navigasyon helper - Expo Router kullanımı
+  // 🔹 Navigasyon helper
   const navigateToTab = (tabName) => {
-    console.log('=== Navigation Debug ===');
-    console.log('Navigating to:', tabName);
-    
     try {
       if (tabName === 'Yeni Harcama') {
         router.push('/expense');
       } else if (tabName === 'Yeni Grup') {
         router.push('/group');
-      } else {
-        console.log('Unknown route:', tabName);
       }
     } catch (error) {
       console.log('Navigation error:', error);
-      Alert.alert('Navigasyon Hatası', error.message || 'Bilinmeyen hata');
+      Alert.alert('Error', 'Navigation failed');
     }
   };
 
@@ -98,8 +129,25 @@ export default function DashboardScreen() {
     </View>
   );
 
+  const copyInviteCode = (code) => {
+    Clipboard.setString(code);
+    Alert.alert('Copied! 📋', `Invite code ${code} copied to clipboard`);
+  };
+
+  const handleGroupPress = (group) => {
+    // Set selected group and navigate to My Groups tab
+    setSelectedGroupId(group.id);
+    // Navigate to My Groups tab using Expo Router
+    router.push('/(tabs)/summary');
+  };
+
   const renderGroupCard = (group) => (
-    <TouchableOpacity style={styles.groupCard} key={group.id}>
+    <TouchableOpacity 
+      style={styles.groupCard} 
+      key={group.id}
+      onPress={() => handleGroupPress(group)}
+      activeOpacity={0.7}
+    >
       <View style={styles.groupHeader}>
         <View style={[styles.groupColor, { backgroundColor: group.color }]} />
         <View style={styles.groupInfo}>
@@ -115,10 +163,23 @@ export default function DashboardScreen() {
           </Text>
         </View>
       </View>
-      <TouchableOpacity style={styles.detailButton}>
-        <Text style={styles.detailButtonText}>Details</Text>
-        <Ionicons name="chevron-forward" size={16} color="#6366F1" />
-      </TouchableOpacity>
+      
+      <View style={styles.groupFooter}>
+        <View style={styles.inviteCodeContainer}>
+          <Ionicons name="key" size={14} color="#64748b" />
+          <Text style={styles.inviteCodeLabel}>Code:</Text>
+          <Text style={styles.inviteCode}>{group.inviteCode}</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.copyButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            copyInviteCode(group.inviteCode);
+          }}
+        >
+          <Ionicons name="copy" size={16} color="#0EA5E9" />
+        </TouchableOpacity>
+      </View>
     </TouchableOpacity>
   );
 
@@ -212,10 +273,7 @@ export default function DashboardScreen() {
           <View style={styles.quickActionsGrid}>
             {renderQuickAction('New Expense', 'add-circle', '#6366F1', () => navigateToTab('Yeni Harcama'))}
             {renderQuickAction('New Group', 'people', '#F472B6', () => navigateToTab('Yeni Grup'))}
-            {renderQuickAction('Share Debt', 'share', '#4ECDC4', () => {
-              console.log('Debt sharing feature not yet implemented');
-            })}
-            {renderQuickAction('View Summary', 'stats-chart', '#FF6B6B', () => navigateToTab('Özet'))}
+            {renderQuickAction('Join Group', 'enter', '#4ECDC4', () => setJoinModalVisible(true))}
           </View>
         </View>
 
@@ -225,6 +283,60 @@ export default function DashboardScreen() {
           {recentActivities.map(renderActivityItem)}
         </View>
       </ScrollView>
+
+      {/* Join Group Modal */}
+      <Modal
+        visible={joinModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setJoinModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Join Group</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setJoinModalVisible(false);
+                  setInviteCode('');
+                }}
+              >
+                <Ionicons name="close" size={28} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalDescription}>
+              Enter the 6-character invite code shared by your friend
+            </Text>
+
+            <TextInput
+              style={styles.codeInput}
+              value={inviteCode}
+              onChangeText={(text) => setInviteCode(text.toUpperCase())}
+              placeholder="ABC123"
+              placeholderTextColor="#94a3b8"
+              maxLength={6}
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
+
+            <TouchableOpacity
+              style={[styles.joinButton, isJoining && styles.joinButtonDisabled]}
+              onPress={handleJoinGroup}
+              disabled={isJoining}
+            >
+              {isJoining ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="enter" size={20} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.joinButtonText}>Join Group</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -332,23 +444,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 107, 157, 0.08)',
   },
-  groupHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  groupHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   groupColor: { width: 14, height: 14, borderRadius: 7, marginRight: 14 },
   groupInfo: { flex: 1 },
   groupName: { fontSize: 17, fontWeight: '700', color: '#1F2937', marginBottom: 4, letterSpacing: -0.3 },
   groupMembers: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
   groupBalance: { alignItems: 'flex-end' },
   groupBalanceText: { fontSize: 17, fontWeight: '800', letterSpacing: -0.5 },
-  detailButton: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    paddingVertical: 12, 
-    borderTopWidth: 1.5, 
-    borderTopColor: 'rgba(243, 244, 246, 0.8)',
-    marginTop: 4,
+  groupFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    marginTop: 8,
   },
-  detailButtonText: { fontSize: 14, fontWeight: '700', color: '#C06FBB', marginRight: 6 },
+  inviteCodeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
+  },
+  inviteCodeLabel: { fontSize: 12, color: '#64748b', fontWeight: '600' },
+  inviteCode: { fontSize: 13, fontWeight: '800', color: '#0EA5E9', letterSpacing: 1 },
+  copyButton: {
+    backgroundColor: '#e0f2fe',
+    padding: 8,
+    borderRadius: 8,
+  },
   activitiesSection: { marginTop: 12, marginBottom: 24, paddingHorizontal: 20 },
   activityItem: {
     flexDirection: 'row',
@@ -370,4 +497,48 @@ const styles = StyleSheet.create({
   activityMessage: { fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 4, letterSpacing: -0.2 },
   activityGroup: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
   activityTime: { fontSize: 11, color: '#9CA3AF', fontWeight: '600' },
+  // Modal styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { 
+    backgroundColor: 'white', 
+    borderRadius: 24, 
+    padding: 28, 
+    width: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalTitle: { fontSize: 24, fontWeight: '800', color: '#1F2937' },
+  modalDescription: { fontSize: 15, color: '#64748b', marginBottom: 24, lineHeight: 22 },
+  codeInput: {
+    borderWidth: 2,
+    borderColor: '#0EA5E9',
+    borderRadius: 16,
+    padding: 18,
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 4,
+    textAlign: 'center',
+    color: '#1F2937',
+    marginBottom: 24,
+    backgroundColor: '#f8fafc',
+  },
+  joinButton: {
+    backgroundColor: '#0EA5E9',
+    borderRadius: 16,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0EA5E9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  joinButtonDisabled: { backgroundColor: '#94a3b8', opacity: 0.7 },
+  joinButtonText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 });

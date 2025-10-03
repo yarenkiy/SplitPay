@@ -45,6 +45,7 @@ const initializeDatabase = async () => {
         name VARCHAR(255) NOT NULL,
         description TEXT,
         color VARCHAR(7) DEFAULT '#6366F1',
+        invite_code VARCHAR(6) UNIQUE NOT NULL,
         created_by INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT fk_groups_created_by FOREIGN KEY (created_by) REFERENCES users (id)
