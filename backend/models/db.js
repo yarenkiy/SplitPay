@@ -38,9 +38,9 @@ const initializeDatabase = async () => {
       )
     `);
 
-    // Groups table (renamed to user_groups to avoid reserved keyword issue)
+    // Groups table
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_groups (
+      CREATE TABLE IF NOT EXISTS \`groups\` (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         description TEXT,
@@ -58,7 +58,7 @@ const initializeDatabase = async () => {
         group_id INT,
         user_id INT,
         joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_group_members_group FOREIGN KEY (group_id) REFERENCES user_groups (id),
+        CONSTRAINT fk_group_members_group FOREIGN KEY (group_id) REFERENCES \`groups\` (id),
         CONSTRAINT fk_group_members_user FOREIGN KEY (user_id) REFERENCES users (id)
       )
     `);
@@ -73,7 +73,7 @@ const initializeDatabase = async () => {
         amount DECIMAL(10,2) NOT NULL,
         description TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_expenses_group FOREIGN KEY (group_id) REFERENCES user_groups (id),
+        CONSTRAINT fk_expenses_group FOREIGN KEY (group_id) REFERENCES \`groups\` (id),
         CONSTRAINT fk_expenses_user FOREIGN KEY (user_id) REFERENCES users (id),
         CONSTRAINT fk_expenses_paid_by FOREIGN KEY (paid_by) REFERENCES users (id)
       )

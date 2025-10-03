@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import React, { useContext, useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useContext, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -31,9 +31,12 @@ export default function DashboardScreen() {
   const [groups, setGroups] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  // Ekran her göründüğünde verileri yenile
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboardData();
+    }, [])
+  );
 
   const fetchDashboardData = async () => {
     try {
@@ -144,40 +147,54 @@ export default function DashboardScreen() {
   // --- Loading State ---
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#6366F1" />
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#0EA5E9" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#6366F1" />
+          <ActivityIndicator size="large" color="#667eea" />
           <Text style={styles.loadingText}>Loading data...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // --- Main UI ---
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#6366F1" />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0EA5E9" />
       
-      {/* Header */}
+      {/* Modern Gradient Header */}
       <LinearGradient
-        colors={['#6366F1', '#F472B6']}
+        colors={['#0EA5E9', '#06B6D4', '#14B8A6']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.header}
+        style={styles.headerGradient}
       >
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerTitle}>SplitPay</Text>
-            <Text style={styles.headerSubtitle}>Welcome, {user?.name || 'User'}!</Text>
+        <SafeAreaView>
+          <View style={styles.headerContent}>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.appName}>SplitPay</Text>
+              <Text style={styles.greetingText}>Hi, {user?.name || 'User'}! 👋</Text>
+            </View>
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Ionicons name="exit-outline" size={22} color="white" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
+        </SafeAreaView>
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Groups - Horizontal Scroll */}
+        <View style={styles.groupsSection}>
+          <Text style={styles.sectionTitle}>Your Groups</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.groupsScrollContent}
+          >
+            {groups.map(renderGroupCard)}
+          </ScrollView>
+        </View>
+
         {/* Summary Cards */}
         <View style={styles.summarySection}>
           <Text style={styles.sectionTitle}>Summary</Text>
@@ -202,112 +219,155 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Groups */}
-        <View style={styles.groupsSection}>
-          <Text style={styles.sectionTitle}>Your Groups</Text>
-          {groups.map(renderGroupCard)}
-        </View>
-
         {/* Recent Activities */}
         <View style={styles.activitiesSection}>
           <Text style={styles.sectionTitle}>Recent Activities</Text>
           {recentActivities.map(renderActivityItem)}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 // --- Styles ---
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: '#f8fafc' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 16, fontSize: 16, color: '#6366F1', fontWeight: '500' },
-  header: { paddingTop: 20, paddingBottom: 30, paddingHorizontal: 20 },
-  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  logoutButton: { padding: 8 },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', color: 'white', marginBottom: 5 },
-  headerSubtitle: { fontSize: 16, color: 'white', opacity: 0.9 },
-  content: { flex: 1, paddingHorizontal: 20 },
-  sectionTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937', marginTop: 25, marginBottom: 15 },
-  summarySection: { marginTop: -20 },
-  summaryGrid: { gap: 15 },
-  summaryCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  loadingText: { marginTop: 16, fontSize: 16, color: '#0EA5E9', fontWeight: '600' },
+  headerGradient: { 
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    paddingTop: 12,
   },
-  summaryHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  summaryTitle: { fontSize: 14, fontWeight: '600', color: '#6B7280', marginLeft: 8 },
-  summaryAmount: { fontSize: 24, fontWeight: 'bold', marginBottom: 5 },
-  summarySubtitle: { fontSize: 12, color: '#9CA3AF' },
-  quickActionsSection: { marginTop: 10 },
-  quickActionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 15 },
-  quickAction: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 15,
-    alignItems: 'center',
-    width: '47%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+  headerContent: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start',
+    paddingTop: 8,
   },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  headerTextContainer: {
+    flex: 1,
+  },
+  appName: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: 'white',
+    marginBottom: 6,
+    letterSpacing: -1,
+  },
+  greetingText: {
+    fontSize: 16,
+    color: 'white',
+    opacity: 0.95,
+    fontWeight: '500',
+  },
+  logoutButton: { 
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginTop: 4,
   },
-  quickActionText: { fontSize: 12, fontWeight: '600', color: '#374151', textAlign: 'center' },
-  groupsSection: { marginTop: 10 },
-  groupCard: {
+  content: { flex: 1 },
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: '#1F2937', marginTop: 20, marginBottom: 14, letterSpacing: -0.5, paddingHorizontal: 20 },
+  summarySection: { paddingHorizontal: 20 },
+  summaryGrid: { gap: 16 },
+  summaryCard: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    borderRadius: 20,
+    padding: 22,
+    borderLeftWidth: 5,
+    shadowColor: '#C06FBB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  summaryHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  summaryTitle: { fontSize: 14, fontWeight: '600', color: '#6B7280', marginLeft: 10 },
+  summaryAmount: { fontSize: 28, fontWeight: '800', marginBottom: 6, letterSpacing: -1 },
+  summarySubtitle: { fontSize: 13, color: '#9CA3AF', fontWeight: '500' },
+  quickActionsSection: { marginTop: 12, paddingHorizontal: 20 },
+  quickActionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+  quickAction: {
+    backgroundColor: 'white',
+    borderRadius: 18,
+    padding: 18,
+    alignItems: 'center',
+    width: '47%',
+    shadowColor: '#7A5FD8',
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(192, 111, 187, 0.1)',
   },
-  groupHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-  groupColor: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
+  quickActionIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  quickActionText: { fontSize: 13, fontWeight: '700', color: '#374151', textAlign: 'center', letterSpacing: -0.3 },
+  groupsSection: { marginTop: 8 },
+  groupsScrollContent: { 
+    paddingHorizontal: 20,
+    gap: 14,
+  },
+  groupCard: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 18,
+    width: 280,
+    shadowColor: '#FF6B9D',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 157, 0.08)',
+  },
+  groupHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  groupColor: { width: 14, height: 14, borderRadius: 7, marginRight: 14 },
   groupInfo: { flex: 1 },
-  groupName: { fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 2 },
-  groupMembers: { fontSize: 12, color: '#6B7280' },
+  groupName: { fontSize: 17, fontWeight: '700', color: '#1F2937', marginBottom: 4, letterSpacing: -0.3 },
+  groupMembers: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
   groupBalance: { alignItems: 'flex-end' },
-  groupBalanceText: { fontSize: 16, fontWeight: 'bold' },
-  detailButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
-  detailButtonText: { fontSize: 14, fontWeight: '600', color: '#6366F1', marginRight: 5 },
-  activitiesSection: { marginTop: 10, marginBottom: 20 },
+  groupBalanceText: { fontSize: 17, fontWeight: '800', letterSpacing: -0.5 },
+  detailButton: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 12, 
+    borderTopWidth: 1.5, 
+    borderTopColor: 'rgba(243, 244, 246, 0.8)',
+    marginTop: 4,
+  },
+  detailButtonText: { fontSize: 14, fontWeight: '700', color: '#C06FBB', marginRight: 6 },
+  activitiesSection: { marginTop: 12, marginBottom: 24, paddingHorizontal: 20 },
   activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#7A5FD8',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(122, 95, 216, 0.06)',
   },
-  activityIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  activityIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   activityContent: { flex: 1 },
-  activityMessage: { fontSize: 14, fontWeight: '500', color: '#1F2937', marginBottom: 2 },
-  activityGroup: { fontSize: 12, color: '#6B7280' },
-  activityTime: { fontSize: 11, color: '#9CA3AF' },
+  activityMessage: { fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 4, letterSpacing: -0.2 },
+  activityGroup: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  activityTime: { fontSize: 11, color: '#9CA3AF', fontWeight: '600' },
 });

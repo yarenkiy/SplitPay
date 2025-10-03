@@ -12,7 +12,7 @@ const getDashboardData = async (req, res) => {
         COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) as total_credit,
         COALESCE(SUM(amount), 0) as balance
       FROM expenses 
-      WHERE user_id = $1
+      WHERE user_id = ?
     `;
     
     const summaryResult = await pool.query(summaryQuery, [userId]);
@@ -26,15 +26,15 @@ const getDashboardData = async (req, res) => {
         g.color,
         COUNT(DISTINCT gm.user_id) as member_count,
         COALESCE(SUM(e.amount), 0) as user_balance
-      FROM groups g
+      FROM \`groups\` g
       JOIN group_members gm ON g.id = gm.group_id
-      LEFT JOIN expenses e ON g.id = e.group_id AND e.user_id = $1
-      WHERE gm.user_id = $1
+      LEFT JOIN expenses e ON g.id = e.group_id AND e.user_id = ?
+      WHERE gm.user_id = ?
       GROUP BY g.id, g.name, g.color
       ORDER BY g.created_at DESC
     `;
     
-    const groupsResult = await pool.query(groupsQuery, [userId]);
+    const groupsResult = await pool.query(groupsQuery, [userId, userId]);
     
     // Get recent activities
     const activitiesQuery = `
@@ -51,15 +51,15 @@ const getDashboardData = async (req, res) => {
           ELSE 'expense'
         END as activity_type
       FROM expenses e
-      JOIN groups g ON e.group_id = g.id
-      WHERE e.user_id = $1 OR e.group_id IN (
-        SELECT group_id FROM group_members WHERE user_id = $1
+      JOIN \`groups\` g ON e.group_id = g.id
+      WHERE e.user_id = ? OR e.group_id IN (
+        SELECT group_id FROM group_members WHERE user_id = ?
       )
       ORDER BY e.created_at DESC
       LIMIT 10
     `;
     
-    const activitiesResult = await pool.query(activitiesQuery, [userId]);
+    const activitiesResult = await pool.query(activitiesQuery, [userId, userId]);
     
     res.json({
       success: true,
@@ -104,7 +104,7 @@ const getSummary = async (req, res) => {
         COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) as total_credit,
         COALESCE(SUM(amount), 0) as balance
       FROM expenses 
-      WHERE user_id = $1
+      WHERE user_id = ?
     `;
     
     const result = await pool.query(query, [userId]);
@@ -136,15 +136,15 @@ const getUserGroups = async (req, res) => {
         g.color,
         COUNT(DISTINCT gm.user_id) as member_count,
         COALESCE(SUM(e.amount), 0) as user_balance
-      FROM groups g
+      FROM \`groups\` g
       JOIN group_members gm ON g.id = gm.group_id
-      LEFT JOIN expenses e ON g.id = e.group_id AND e.user_id = $1
-      WHERE gm.user_id = $1
+      LEFT JOIN expenses e ON g.id = e.group_id AND e.user_id = ?
+      WHERE gm.user_id = ?
       GROUP BY g.id, g.name, g.color
       ORDER BY g.created_at DESC
     `;
     
-    const result = await pool.query(query, [userId]);
+    const result = await pool.query(query, [userId, userId]);
     
     res.json({
       success: true,
@@ -181,15 +181,15 @@ const getRecentActivities = async (req, res) => {
           ELSE 'expense'
         END as activity_type
       FROM expenses e
-      JOIN groups g ON e.group_id = g.id
-      WHERE e.user_id = $1 OR e.group_id IN (
-        SELECT group_id FROM group_members WHERE user_id = $1
+      JOIN \`groups\` g ON e.group_id = g.id
+      WHERE e.user_id = ? OR e.group_id IN (
+        SELECT group_id FROM group_members WHERE user_id = ?
       )
       ORDER BY e.created_at DESC
       LIMIT 10
     `;
     
-    const result = await pool.query(query, [userId]);
+    const result = await pool.query(query, [userId, userId]);
     
     res.json({
       success: true,

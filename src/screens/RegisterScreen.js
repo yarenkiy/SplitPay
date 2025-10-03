@@ -39,7 +39,7 @@ export default function RegisterScreen() {
 
   return (
     <LinearGradient
-      colors={['#667eea', '#764ba2']}
+      colors={['#0EA5E9', '#06B6D4', '#14B8A6']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.gradientBg}
@@ -99,7 +99,7 @@ export default function RegisterScreen() {
             disabled={isLoading}
           >
             <LinearGradient
-              colors={isLoading ? ['#9CA3AF', '#9CA3AF'] : ['#667eea', '#764ba2']}
+              colors={isLoading ? ['#9CA3AF', '#9CA3AF'] : ['#0EA5E9', '#06B6D4']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.buttonGradient}
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   loginLink: {
-    color: '#667eea',
+    color: '#0EA5E9',
     fontWeight: 'bold',
   },
 });

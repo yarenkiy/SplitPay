@@ -18,11 +18,11 @@ app.use(express.json());
 app.get('/api/test-db', async (req, res) => {
   try {
     const pool = require('./models/db');
-    const result = await pool.query('SELECT NOW() as current_time');
+    const result = await pool.query('SELECT 1 as test');
     res.json({ 
       success: true, 
       message: 'Database connected successfully!',
-      timestamp: result.rows[0].current_time 
+      test: result.rows[0]?.test || 'OK'
     });
   } catch (err) {
     console.error('Database connection error:', err);

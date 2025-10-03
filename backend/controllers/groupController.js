@@ -6,9 +6,9 @@ exports.createGroup = async (req, res) => {
     const { name, description, color, members } = req.body;
     const userId = req.user.id;
 
-    // Insert into user_groups (MySQL schema)
+    // Insert into groups table
     const groupInsert = await pool.query(
-      'INSERT INTO user_groups (name, description, color, created_by) VALUES (?, ?, ?, ?)',
+      'INSERT INTO `groups` (name, description, color, created_by) VALUES (?, ?, ?, ?)',
       [name, description || null, color || '#6366F1', userId]
     );
 
@@ -41,7 +41,7 @@ exports.createGroup = async (req, res) => {
   }
 };
 
-// Add a simple expense row (schema: expenses group_id, user_id, paid_by, amount, description)
+// Add expense and split among group members
 exports.addExpense = async (req, res) => {
   try {
     const { groupId } = req.params;
@@ -53,12 +53,40 @@ exports.addExpense = async (req, res) => {
       return res.status(400).json({ message: 'Amount must be greater than 0' });
     }
 
-    await pool.query(
-      'INSERT INTO expenses (group_id, user_id, paid_by, amount, description) VALUES (?, ?, ?, ?, ?)',
-      [groupId, userId, paid_by || userId, amount, description || null]
+    // Get all group members
+    const membersResult = await pool.query(
+      'SELECT user_id FROM group_members WHERE group_id = ?',
+      [groupId]
     );
+    
+    const members = membersResult.rows;
+    const memberCount = members.length;
+    
+    if (memberCount === 0) {
+      return res.status(400).json({ message: 'No members in group' });
+    }
 
-    res.json({ message: 'Expense added' });
+    // Calculate split amount per person
+    const splitAmount = parseFloat(amount) / memberCount;
+    const paidById = paid_by || userId;
+
+    // Create expense records for each member
+    for (const member of members) {
+      const memberId = member.user_id;
+      
+      // If this member paid, they get negative (credit/alacak)
+      // If this member didn't pay, they get positive (debt/borç)
+      const memberAmount = memberId === paidById 
+        ? -(parseFloat(amount) - splitAmount)  // Paid amount minus their share = credit
+        : splitAmount;  // Just their share = debt
+
+      await pool.query(
+        'INSERT INTO expenses (group_id, user_id, paid_by, amount, description) VALUES (?, ?, ?, ?, ?)',
+        [groupId, memberId, paidById, memberAmount, description || null]
+      );
+    }
+
+    res.json({ message: 'Expense added and split among members' });
   } catch (error) {
     console.error('addExpense error:', error);
     res.status(500).json({ message: 'Failed to add expense' });
