@@ -6,6 +6,7 @@ import React, { useContext } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
+import AddGroupScreen from '../screens/AddGroupScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import GroupsScreen from '../screens/GroupsScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -16,6 +17,17 @@ import SummaryScreen from '../screens/SummaryScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+const HomeStack = createNativeStackNavigator();
+
+function HomeStackScreen() {
+  return (
+    <HomeStack.Navigator screenOptions={{ headerShown: false }}>
+      <HomeStack.Screen name="Ana Sayfa Home" component={DashboardScreen} />
+      <HomeStack.Screen name="Yeni Harcama" component={AddExpenseScreen} />
+      <HomeStack.Screen name="Yeni Grup" component={AddGroupScreen} />
+    </HomeStack.Navigator>
+  );
+}
 
 function DashboardTabs() {
   return (
@@ -51,9 +63,8 @@ function DashboardTabs() {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Ana Sayfa" component={DashboardScreen} />
+      <Tab.Screen name="Ana Sayfa" component={HomeStackScreen} />
       <Tab.Screen name="Gruplar" component={GroupsScreen} />
-      <Tab.Screen name="Yeni Harcama" component={AddExpenseScreen} />
       <Tab.Screen name="Özet" component={SummaryScreen} />
       <Tab.Screen name="Ayarlar" component={SettingsScreen} />
     </Tab.Navigator>
@@ -119,6 +130,7 @@ export default function AppNavigator() {
             </>
           )
         )}
+        
       </Stack.Navigator>
     </NavigationContainer>
   );

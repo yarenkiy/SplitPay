@@ -36,6 +36,9 @@ export const groupAPI = {
   getGroupById: (id) => api.get(`/groups/${id}`),
   updateGroup: (id, groupData) => api.put(`/groups/${id}`, groupData),
   deleteGroup: (id) => api.delete(`/groups/${id}`),
+  getGroupMembers: (groupId) => api.get(`/groups/${groupId}/members`),
+  addExpense: (groupId, payload) => api.post(`/groups/${groupId}/expenses`, payload),
+  searchUsers: (query) => api.get(`/groups/search/users`, { params: { q: query } }),
 };
 
 export const dashboardAPI = {

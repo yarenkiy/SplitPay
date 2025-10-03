@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import React, { useContext, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,14 +17,10 @@ import { AuthContext } from '../context/AuthContext';
 import { dashboardAPI } from '../services/api';
 
 export default function DashboardScreen() {
-  const navigation = useNavigation();
+  const router = useRouter();
   const { logout, user } = useContext(AuthContext);
   
-  // Debug navigation object
-  console.log('Navigation object:', navigation);
-  console.log('Navigation methods:', Object.keys(navigation || {}));
-  console.log('Navigation type:', navigation?.getState?.()?.type);
-  console.log('Current route:', navigation?.getCurrentRoute?.());
+  console.log('DashboardScreen mounted');
   
   const [isLoading, setIsLoading] = useState(true);
   const [summaryData, setSummaryData] = useState({
@@ -68,34 +64,26 @@ export default function DashboardScreen() {
     }
   };
 
+  // 🔹 Navigasyon helper - Expo Router kullanımı
   const navigateToTab = (tabName) => {
+    console.log('=== Navigation Debug ===');
+    console.log('Navigating to:', tabName);
+    
     try {
-      console.log('Attempting to navigate to:', tabName);
-      
-      // Navigate to Yeni Harcama tab
-      if (tabName === 'Harcama') {
-        if (navigation && navigation.navigate) {
-          console.log('Navigating to Yeni Harcama tab');
-          navigation.navigate('Yeni Harcama');
-        } else {
-          console.log('Navigation not available');
-        }
+      if (tabName === 'Yeni Harcama') {
+        router.push('/expense');
+      } else if (tabName === 'Yeni Grup') {
+        router.push('/group');
       } else {
-        // For other tabs, use regular navigation
-        if (navigation && navigation.navigate) {
-          console.log('Navigating to tab:', tabName);
-          navigation.navigate(tabName);
-        } else {
-          console.log('Navigation not available');
-        }
+        console.log('Unknown route:', tabName);
       }
     } catch (error) {
       console.log('Navigation error:', error);
-      console.log('Navigation object:', navigation);
+      Alert.alert('Navigasyon Hatası', error.message || 'Bilinmeyen hata');
     }
   };
 
-
+  // --- UI Helpers ---
   const renderSummaryCard = (title, amount, subtitle, color, icon) => (
     <View style={[styles.summaryCard, { borderLeftColor: color }]}>
       <View style={styles.summaryHeader}>
@@ -153,6 +141,7 @@ export default function DashboardScreen() {
     </TouchableOpacity>
   );
 
+  // --- Loading State ---
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -165,6 +154,7 @@ export default function DashboardScreen() {
     );
   }
 
+  // --- Main UI ---
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#6366F1" />
@@ -192,27 +182,10 @@ export default function DashboardScreen() {
         <View style={styles.summarySection}>
           <Text style={styles.sectionTitle}>Summary</Text>
           <View style={styles.summaryGrid}>
-            {renderSummaryCard(
-              'Total Debt',
-              summaryData.totalDebt,
-              'You owe to others',
-              '#FF6B6B',
-              'arrow-down'
-            )}
-            {renderSummaryCard(
-              'Total Credit',
-              summaryData.totalCredit,
-              'Others owe you',
-              '#4ECDC4',
-              'arrow-up'
-            )}
-            {renderSummaryCard(
-              'Balance',
-              summaryData.balance,
-              'Credit - Debt',
-              summaryData.balance >= 0 ? '#4ECDC4' : '#FF6B6B',
-              'wallet'
-            )}
+            {renderSummaryCard('Total Debt', summaryData.totalDebt, 'You owe to others', '#FF6B6B', 'arrow-down')}
+            {renderSummaryCard('Total Credit', summaryData.totalCredit, 'Others owe you', '#4ECDC4', 'arrow-up')}
+            {renderSummaryCard('Balance', summaryData.balance, 'Credit - Debt',
+              summaryData.balance >= 0 ? '#4ECDC4' : '#FF6B6B', 'wallet')}
           </View>
         </View>
 
@@ -220,10 +193,9 @@ export default function DashboardScreen() {
         <View style={styles.quickActionsSection}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActionsGrid}>
-            {renderQuickAction('New Expense', 'add-circle', '#6366F1', () => navigateToTab('Harcama'))}
-            {renderQuickAction('New Group', 'people', '#F472B6', () => navigateToTab('Gruplar'))}
+            {renderQuickAction('New Expense', 'add-circle', '#6366F1', () => navigateToTab('Yeni Harcama'))}
+            {renderQuickAction('New Group', 'people', '#F472B6', () => navigateToTab('Yeni Grup'))}
             {renderQuickAction('Share Debt', 'share', '#4ECDC4', () => {
-              // TODO: Implement debt sharing functionality
               console.log('Debt sharing feature not yet implemented');
             })}
             {renderQuickAction('View Summary', 'stats-chart', '#FF6B6B', () => navigateToTab('Özet'))}
@@ -246,63 +218,20 @@ export default function DashboardScreen() {
   );
 }
 
+// --- Styles ---
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#6366F1',
-    fontWeight: '500',
-  },
-  header: {
-    paddingTop: 20,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  logoutButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 5,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: 'white',
-    opacity: 0.9,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginTop: 25,
-    marginBottom: 15,
-  },
-  summarySection: {
-    marginTop: -20,
-  },
-  summaryGrid: {
-    gap: 15,
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 16, fontSize: 16, color: '#6366F1', fontWeight: '500' },
+  header: { paddingTop: 20, paddingBottom: 30, paddingHorizontal: 20 },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  logoutButton: { padding: 8 },
+  headerTitle: { fontSize: 28, fontWeight: 'bold', color: 'white', marginBottom: 5 },
+  headerSubtitle: { fontSize: 16, color: 'white', opacity: 0.9 },
+  content: { flex: 1, paddingHorizontal: 20 },
+  sectionTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937', marginTop: 25, marginBottom: 15 },
+  summarySection: { marginTop: -20 },
+  summaryGrid: { gap: 15 },
   summaryCard: {
     backgroundColor: 'white',
     borderRadius: 16,
@@ -314,34 +243,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  summaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  summaryTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginLeft: 8,
-  },
-  summaryAmount: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  summarySubtitle: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  quickActionsSection: {
-    marginTop: 10,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 15,
-  },
+  summaryHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  summaryTitle: { fontSize: 14, fontWeight: '600', color: '#6B7280', marginLeft: 8 },
+  summaryAmount: { fontSize: 24, fontWeight: 'bold', marginBottom: 5 },
+  summarySubtitle: { fontSize: 12, color: '#9CA3AF' },
+  quickActionsSection: { marginTop: 10 },
+  quickActionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 15 },
   quickAction: {
     backgroundColor: 'white',
     borderRadius: 12,
@@ -362,15 +269,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  quickActionText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#374151',
-    textAlign: 'center',
-  },
-  groupsSection: {
-    marginTop: 10,
-  },
+  quickActionText: { fontSize: 12, fontWeight: '600', color: '#374151', textAlign: 'center' },
+  groupsSection: { marginTop: 10 },
   groupCard: {
     backgroundColor: 'white',
     borderRadius: 16,
@@ -382,55 +282,16 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  groupColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  groupInfo: {
-    flex: 1,
-  },
-  groupName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 2,
-  },
-  groupMembers: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  groupBalance: {
-    alignItems: 'flex-end',
-  },
-  groupBalanceText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  detailButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  detailButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6366F1',
-    marginRight: 5,
-  },
-  activitiesSection: {
-    marginTop: 10,
-    marginBottom: 20,
-  },
+  groupHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+  groupColor: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
+  groupInfo: { flex: 1 },
+  groupName: { fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 2 },
+  groupMembers: { fontSize: 12, color: '#6B7280' },
+  groupBalance: { alignItems: 'flex-end' },
+  groupBalanceText: { fontSize: 16, fontWeight: 'bold' },
+  detailButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
+  detailButtonText: { fontSize: 14, fontWeight: '600', color: '#6366F1', marginRight: 5 },
+  activitiesSection: { marginTop: 10, marginBottom: 20 },
   activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -444,29 +305,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityMessage: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1F2937',
-    marginBottom: 2,
-  },
-  activityGroup: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  activityTime: {
-    fontSize: 11,
-    color: '#9CA3AF',
-  },
-}); 
+  activityIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  activityContent: { flex: 1 },
+  activityMessage: { fontSize: 14, fontWeight: '500', color: '#1F2937', marginBottom: 2 },
+  activityGroup: { fontSize: 12, color: '#6B7280' },
+  activityTime: { fontSize: 11, color: '#9CA3AF' },
+});

@@ -1,49 +1,41 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import React, { useRef, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Animated,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
 export default function AddExpenseScreen() {
-  const navigation = useNavigation();
+  const router = useRouter();
+  const params = useLocalSearchParams();
   
-  // Debug navigation object
-  console.log('AddExpenseScreen Navigation object:', navigation);
-  console.log('AddExpenseScreen Navigation methods:', Object.keys(navigation || {}));
-  
-  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState(params?.preselectedGroup || null);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [paidBy, setPaidBy] = useState('Sen');
+  const [paidBy, setPaidBy] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
-  const groups = [
-    { id: '1', name: 'Antalya Tatili', color: '#FF6B6B', memberCount: 4 },
-    { id: '2', name: 'Ev Arkadaşları', color: '#4ECDC4', memberCount: 3 },
-    { id: '3', name: 'Market Gideri', color: '#45B7D1', memberCount: 2 },
-    { id: '4', name: 'Sinema Gecesi', color: '#FFA726', memberCount: 5 },
-  ];
-
-  const members = ['Sen', 'Yaren', 'Selen', 'Ahmet', 'Mehmet'];
+  const [groups, setGroups] = useState([]);
+  const [members, setMembers] = useState([]);
 
   const expenseCategories = [
     { id: '1', name: 'Yemek', icon: 'restaurant', color: '#FF6B6B' },
@@ -55,9 +47,10 @@ export default function AddExpenseScreen() {
   ];
 
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedParticipants, setSelectedParticipants] = useState({});
 
   // Start animations on mount
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -71,6 +64,44 @@ export default function AddExpenseScreen() {
       }),
     ]).start();
   }, []);
+
+  // Load groups and members
+  useEffect(() => {
+    let mounted = true;
+    const loadInitial = async () => {
+      try {
+        setIsLoading(true);
+        const { groupAPI, dashboardAPI } = await import('../services/api');
+        const groupsRes = await dashboardAPI.getUserGroups();
+        if (!mounted) return;
+        const normalizedGroups = (groupsRes.data?.data || groupsRes.data || []).map(g => ({
+          id: g.id,
+          name: g.name,
+          color: g.color,
+          memberCount: g.members || g.member_count || 0,
+        }));
+        setGroups(normalizedGroups);
+
+        const groupToLoad = params?.preselectedGroup?.id || normalizedGroups[0]?.id;
+        if (groupToLoad) {
+          const memRes = await groupAPI.getGroupMembers(groupToLoad);
+          if (!mounted) return;
+          setMembers(memRes.data || []);
+          setSelectedGroup(normalizedGroups.find(g => String(g.id) === String(groupToLoad)) || params?.preselectedGroup || null);
+          // Default paidBy to current user if exists in members
+          if (memRes.data && memRes.data.length > 0) {
+            setPaidBy(memRes.data[0].id);
+          }
+        }
+      } catch (e) {
+        console.log('Load initial error', e);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    loadInitial();
+    return () => { mounted = false; };
+  }, [params?.preselectedGroup]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -87,6 +118,13 @@ export default function AddExpenseScreen() {
     if (!selectedCategory) {
       newErrors.category = 'Lütfen bir kategori seçin';
     }
+    if (!paidBy) {
+      newErrors.paidBy = 'Ödeyen kişiyi seçin';
+    }
+    const participantIds = Object.keys(selectedParticipants).filter(id => selectedParticipants[id]);
+    if (participantIds.length === 0) {
+      newErrors.participants = 'En az bir kişi seçin';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -97,11 +135,16 @@ export default function AddExpenseScreen() {
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const { groupAPI } = await import('../services/api');
+      const participantIds = Object.keys(selectedParticipants).filter(id => selectedParticipants[id]);
+      await groupAPI.addExpense(selectedGroup.id, {
+        amount: parseFloat(amount),
+        description,
+        paid_by: paidBy,
+      });
 
       Alert.alert(
         'Başarılı! 🎉',
@@ -115,19 +158,11 @@ export default function AddExpenseScreen() {
               setDescription('');
               setSelectedCategory(null);
               setSelectedGroup(null);
-              setPaidBy('Sen');
+              setPaidBy(null);
               setErrors({});
               
-              // Navigate back to dashboard
-              try {
-                if (navigation && navigation.navigate) {
-                  navigation.navigate('Ana Sayfa');
-                } else {
-                  console.log('Navigation not available');
-                }
-              } catch (error) {
-                console.log('Navigation error:', error);
-              }
+              // Navigate back to Dashboard
+              router.back();
             }
           }
         ]
@@ -135,7 +170,7 @@ export default function AddExpenseScreen() {
     } catch (error) {
       Alert.alert('Hata', 'Harcama eklenirken bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -219,36 +254,40 @@ export default function AddExpenseScreen() {
 
   const renderMemberOption = (member) => (
     <TouchableOpacity
-      key={member}
+      key={member.id || member}
       style={[
         styles.memberOption,
-        paidBy === member && styles.selectedMemberOption
+        paidBy === (member.id || member) && styles.selectedMemberOption
       ]}
-      onPress={() => setPaidBy(member)}
+      onPress={() => setPaidBy(member.id || member)}
       activeOpacity={0.7}
     >
       <View style={[
         styles.memberAvatar,
-        paidBy === member && styles.selectedMemberAvatar
+        paidBy === (member.id || member) && styles.selectedMemberAvatar
       ]}>
         <Text style={[
           styles.memberInitial,
-          paidBy === member && styles.selectedMemberInitial
+          paidBy === (member.id || member) && styles.selectedMemberInitial
         ]}>
-          {member.charAt(0)}
+          {(member.name || String(member)).charAt(0)}
         </Text>
       </View>
       <Text style={[
         styles.memberText,
-        paidBy === member && styles.selectedMemberText
+        paidBy === (member.id || member) && styles.selectedMemberText
       ]}>
-        {member}
+        {member.name || String(member)}
       </Text>
-      {paidBy === member && (
+      {paidBy === (member.id || member) && (
         <Ionicons name="checkmark-circle" size={16} color="#6366F1" />
       )}
     </TouchableOpacity>
   );
+
+  const toggleParticipant = (userId) => {
+    setSelectedParticipants(prev => ({ ...prev, [userId]: !prev[userId] }));
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -259,17 +298,7 @@ export default function AddExpenseScreen() {
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={() => {
-              try {
-                if (navigation && navigation.navigate) {
-                  navigation.navigate('Ana Sayfa');
-                } else {
-                  console.log('Navigation not available');
-                }
-              } catch (error) {
-                console.log('Navigation error:', error);
-              }
-            }}
+            onPress={() => router.back()}
           >
             <Ionicons name="arrow-back" size={24} color="#6366F1" />
           </TouchableOpacity>
@@ -290,7 +319,7 @@ export default function AddExpenseScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Grup Seçin</Text>
               <View style={styles.groupOptions}>
-                {groups.map(renderGroupOption)}
+                {groups.map(g => renderGroupOption(g))}
               </View>
               {errors.group && (
                 <Text style={styles.errorText}>{errors.group}</Text>
@@ -362,19 +391,64 @@ export default function AddExpenseScreen() {
               <View style={styles.memberOptions}>
                 {members.map(renderMemberOption)}
               </View>
+              {errors.paidBy && (
+                <Text style={styles.errorText}>{errors.paidBy}</Text>
+              )}
+            </View>
+
+            {/* Who owes selection */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Kimler paylaşacak?</Text>
+              <View style={styles.memberOptions}>
+                {members.map(m => (
+                  <TouchableOpacity
+                    key={`p-${m.id}`}
+                    style={[
+                      styles.memberOption,
+                      selectedParticipants[m.id] && styles.selectedMemberOption
+                    ]}
+                    onPress={() => toggleParticipant(m.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[
+                      styles.memberAvatar,
+                      selectedParticipants[m.id] && styles.selectedMemberAvatar
+                    ]}>
+                      <Text style={[
+                        styles.memberInitial,
+                        selectedParticipants[m.id] && styles.selectedMemberInitial
+                      ]}>
+                        {m.name?.charAt(0)}
+                      </Text>
+                    </View>
+                    <Text style={[
+                      styles.memberText,
+                      selectedParticipants[m.id] && styles.selectedMemberText
+                    ]}>
+                      {m.name}
+                    </Text>
+                    {selectedParticipants[m.id] && (
+                      <Ionicons name="checkmark-circle" size={16} color="#6366F1" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {errors.participants && (
+                <Text style={styles.errorText}>{errors.participants}</Text>
+              )}
             </View>
 
             {/* Add Button */}
             <TouchableOpacity 
               style={[
                 styles.addButton,
-                isLoading && styles.addButtonDisabled
+                (isSubmitting || isLoading) && styles.addButtonDisabled
               ]} 
               onPress={handleAddExpense}
-              disabled={isLoading}
+              disabled={isSubmitting || isLoading}
               activeOpacity={0.8}
             >
-              {isLoading ? (
+              {(isSubmitting || isLoading) ? (
                 <View style={styles.loadingContainer}>
                   <View style={styles.loadingSpinner} />
                   <Text style={styles.addButtonText}>Ekleniyor...</Text>

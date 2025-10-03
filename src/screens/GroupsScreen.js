@@ -1,15 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import {
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function GroupsScreen() {
+  const navigation = useNavigation();
   const groups = [
     {
       id: '1',
@@ -67,11 +69,27 @@ export default function GroupsScreen() {
         </View>
       </View>
       <View style={styles.groupActions}>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => {
+          try {
+            const tabNav = navigation.getParent?.();
+            tabNav?.navigate?.('Ana Sayfa', { screen: 'Yeni Harcama' });
+          } catch (_) {}
+        }}>
           <Ionicons name="eye" size={16} color="#6366F1" />
           <Text style={styles.actionText}>Detay</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => {
+            try {
+              const tabNav = navigation.getParent?.();
+              tabNav?.navigate?.('Ana Sayfa', {
+                screen: 'Yeni Harcama',
+                params: { preselectedGroup: group },
+              });
+            } catch (e) {}
+          }}
+        >
           <Ionicons name="add-circle" size={16} color="#4ECDC4" />
           <Text style={styles.actionText}>Harcama</Text>
         </TouchableOpacity>
@@ -87,7 +105,12 @@ export default function GroupsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Gruplarım</Text>
-        <TouchableOpacity style={styles.addButton}>
+        <TouchableOpacity style={styles.addButton} onPress={() => {
+          try {
+            const tabNav = navigation.getParent?.();
+            tabNav?.navigate?.('Ana Sayfa', { screen: 'Yeni Grup' });
+          } catch (_) {}
+        }}>
           <Ionicons name="add" size={24} color="white" />
         </TouchableOpacity>
       </View>
