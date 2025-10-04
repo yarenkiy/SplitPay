@@ -27,13 +27,14 @@ const getDashboardData = async (req, res) => {
         g.name,
         g.color,
         g.invite_code,
-        COUNT(DISTINCT gm.user_id) as member_count,
+        g.created_at,
+        (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count,
         COALESCE(SUM(e.amount), 0) as user_balance
       FROM \`groups\` g
       JOIN group_members gm ON g.id = gm.group_id
       LEFT JOIN expenses e ON g.id = e.group_id AND e.user_id = ?
       WHERE gm.user_id = ?
-      GROUP BY g.id, g.name, g.color, g.invite_code
+      GROUP BY g.id, g.name, g.color, g.invite_code, g.created_at
       ORDER BY g.created_at DESC
     `;
     
@@ -76,7 +77,7 @@ const getDashboardData = async (req, res) => {
           id: group.id,
           name: group.name,
           debt: parseFloat(group.user_balance),
-          members: group.member_count,
+          members: parseInt(group.member_count),
           color: group.color,
           inviteCode: group.invite_code
         })),
@@ -141,13 +142,14 @@ const getUserGroups = async (req, res) => {
         g.name,
         g.color,
         g.invite_code,
-        COUNT(DISTINCT gm.user_id) as member_count,
+        g.created_at,
+        (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count,
         COALESCE(SUM(e.amount), 0) as user_balance
       FROM \`groups\` g
       JOIN group_members gm ON g.id = gm.group_id
       LEFT JOIN expenses e ON g.id = e.group_id AND e.user_id = ?
       WHERE gm.user_id = ?
-      GROUP BY g.id, g.name, g.color, g.invite_code
+      GROUP BY g.id, g.name, g.color, g.invite_code, g.created_at
       ORDER BY g.created_at DESC
     `;
     
@@ -159,7 +161,7 @@ const getUserGroups = async (req, res) => {
         id: group.id,
         name: group.name,
         debt: parseFloat(group.user_balance),
-        members: group.member_count,
+        members: parseInt(group.member_count),
         color: group.color,
         inviteCode: group.invite_code
       }))

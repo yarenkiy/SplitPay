@@ -80,6 +80,21 @@ const initializeDatabase = async () => {
       )
     `);
 
+    // Notes table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        group_id INT NOT NULL,
+        user_id INT NOT NULL,
+        text TEXT NOT NULL,
+        completed BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_notes_group FOREIGN KEY (group_id) REFERENCES \`groups\` (id) ON DELETE CASCADE,
+        CONSTRAINT fk_notes_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `);
+
     console.log('✅ Database tables initialized successfully');
   } catch (error) {
     console.error('❌ Error initializing database:', error);

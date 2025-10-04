@@ -50,4 +50,12 @@ export const dashboardAPI = {
   getUserGroups: () => api.get('/dashboard/groups'),
 };
 
+export const notesAPI = {
+  getGroupNotes: (groupId) => api.get(`/notes/group/${groupId}`),
+  createNote: (groupId, text) => api.post(`/notes/group/${groupId}`, { text }),
+  updateNote: (noteId, data) => api.put(`/notes/${noteId}`, data),
+  deleteNote: (noteId) => api.delete(`/notes/${noteId}`),
+  toggleNoteCompletion: (noteId) => api.patch(`/notes/${noteId}/toggle`),
+};
+
 export default api; 

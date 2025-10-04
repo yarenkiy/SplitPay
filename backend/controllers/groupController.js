@@ -250,6 +250,51 @@ exports.joinGroupByCode = async (req, res) => {
   }
 };
 
+// Delete a group (only creator or member can delete)
+exports.deleteGroup = async (req, res) => {
+  try {
+    console.log('🗑️  DELETE GROUP REQUEST RECEIVED');
+    console.log('Params:', req.params);
+    console.log('User ID:', req.user?.id);
+    
+    const { groupId } = req.params;
+    const userId = req.user.id;
+
+    console.log(`Attempting to delete group ${groupId} by user ${userId}`);
+
+    // Check if user is a member of the group
+    const memberCheck = await pool.query(
+      'SELECT id FROM group_members WHERE group_id = ? AND user_id = ?',
+      [groupId, userId]
+    );
+
+    console.log('Member check result:', memberCheck.rows);
+
+    if (memberCheck.rows.length === 0) {
+      console.log('❌ User is not a member of this group');
+      return res.status(403).json({ message: 'You are not a member of this group' });
+    }
+
+    // Delete all expenses related to the group
+    console.log('Deleting expenses...');
+    await pool.query('DELETE FROM expenses WHERE group_id = ?', [groupId]);
+
+    // Delete all group members
+    console.log('Deleting group members...');
+    await pool.query('DELETE FROM group_members WHERE group_id = ?', [groupId]);
+
+    // Delete the group
+    console.log('Deleting group...');
+    await pool.query('DELETE FROM `groups` WHERE id = ?', [groupId]);
+
+    console.log('✅ Group deleted successfully');
+    res.json({ success: true, message: 'Group deleted successfully' });
+  } catch (error) {
+    console.error('❌ deleteGroup error:', error);
+    res.status(500).json({ message: 'Failed to delete group' });
+  }
+};
+
 // Get detailed group information
 exports.getGroupDetails = async (req, res) => {
   try {

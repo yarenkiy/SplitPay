@@ -5,6 +5,7 @@ const pool = require('./models/db');
 const authRoutes = require('./routes/authRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const notesRoutes = require('./routes/notesRoutes');
 
 // Set default environment variables if not provided
 process.env.DB_URL = process.env.DB_URL || 'mysql://root:password@localhost:3306/splitpay';
@@ -37,6 +38,7 @@ app.get('/api/test-db', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/notes', notesRoutes);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

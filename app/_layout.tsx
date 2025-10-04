@@ -32,6 +32,7 @@ function RootLayoutNav() {
       <Stack.Screen name="register" options={{ headerShown: false }} />
       <Stack.Screen name="expense" options={{ headerShown: false }} />
       <Stack.Screen name="group" options={{ headerShown: false }} />
+      <Stack.Screen name="notes" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

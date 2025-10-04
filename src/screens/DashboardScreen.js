@@ -274,6 +274,7 @@ export default function DashboardScreen() {
             {renderQuickAction('New Expense', 'add-circle', '#6366F1', () => navigateToTab('Yeni Harcama'))}
             {renderQuickAction('New Group', 'people', '#F472B6', () => navigateToTab('Yeni Grup'))}
             {renderQuickAction('Join Group', 'enter', '#4ECDC4', () => setJoinModalVisible(true))}
+            {renderQuickAction('Notes', 'list', '#10B981', () => router.push('/notes'))}
           </View>
         </View>
 

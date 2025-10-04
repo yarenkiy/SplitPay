@@ -6,10 +6,11 @@ import {
     ActivityIndicator,
     Alert,
     ScrollView,
+    StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { useSelectedGroup } from '../context/SelectedGroupContext';
 import { dashboardAPI, groupAPI } from '../services/api';
@@ -164,32 +165,34 @@ export default function SummaryScreen() {
     if (!groupDetails) return null;
 
     return (
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <LinearGradient
-          colors={[selectedGroup.color || '#0EA5E9', '#3B82F6']}
-          style={styles.detailsHeaderGradient}
-        >
-          <View style={styles.detailsHeader}>
-            <TouchableOpacity style={styles.backButtonWhite} onPress={handleBackToGroups}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <View style={styles.detailsHeaderInfo}>
-              <Text style={styles.detailsHeaderTitle}>{groupDetails.group.name}</Text>
-              {groupDetails.group.description && (
-                <Text style={styles.detailsHeaderSubtitle}>{groupDetails.group.description}</Text>
-              )}
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <LinearGradient
+            colors={[selectedGroup.color || '#0EA5E9', '#3B82F6']}
+            style={styles.detailsHeaderGradient}
+          >
+            <View style={styles.detailsHeader}>
+              <TouchableOpacity style={styles.backButtonWhite} onPress={handleBackToGroups}>
+                <Ionicons name="arrow-back" size={24} color="#fff" />
+              </TouchableOpacity>
+              <View style={styles.detailsHeaderInfo}>
+                <Text style={styles.detailsHeaderTitle}>{groupDetails.group.name}</Text>
+                {groupDetails.group.description && (
+                  <Text style={styles.detailsHeaderSubtitle}>{groupDetails.group.description}</Text>
+                )}
+              </View>
+              <View style={{ width: 40 }} />
             </View>
-            <View style={{ width: 40 }} />
-          </View>
 
-          <View style={styles.inviteCodeBox}>
-            <Ionicons name="key" size={20} color="#fff" />
-            <View style={styles.inviteCodeInfo}>
-              <Text style={styles.inviteCodeLabel}>Invite Code</Text>
-              <Text style={styles.inviteCodeValue}>{groupDetails.group.inviteCode}</Text>
+            <View style={styles.inviteCodeBox}>
+              <Ionicons name="key" size={20} color="#fff" />
+              <View style={styles.inviteCodeInfo}>
+                <Text style={styles.inviteCodeLabel}>Invite Code</Text>
+                <Text style={styles.inviteCodeValue}>{groupDetails.group.inviteCode}</Text>
+              </View>
             </View>
-          </View>
-        </LinearGradient>
+          </LinearGradient>
 
         <View style={styles.content}>
           {/* Summary Stats */}
@@ -333,7 +336,8 @@ export default function SummaryScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     );
   };
 
@@ -449,7 +453,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   detailsHeaderGradient: {
-    paddingTop: 50,
+    paddingTop: 60,
     paddingBottom: 20,
   },
   detailsHeader: {

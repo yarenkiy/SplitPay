@@ -1,235 +1,107 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useContext, useState } from 'react';
 import {
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { AuthContext } from '../context/AuthContext';
+import { dashboardAPI, groupAPI } from '../services/api';
 
 export default function SettingsScreen() {
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [biometric, setBiometric] = useState(false);
-  const [autoSync, setAutoSync] = useState(true);
+  const { user, logout } = useContext(AuthContext);
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const userProfile = {
-    name: 'Kullanıcı',
-    email: 'kullanici@example.com',
-    avatar: '👤',
-  };
-
-  const settingsSections = [
-    {
-      title: 'Hesap',
-      items: [
-        {
-          id: 'profile',
-          title: 'Profil Bilgileri',
-          subtitle: 'Ad, e-posta ve şifre',
-          icon: 'person',
-          color: '#6366F1',
-          action: 'navigate',
-        },
-        {
-          id: 'currency',
-          title: 'Para Birimi',
-          subtitle: 'TL (Türk Lirası)',
-          icon: 'cash',
-          color: '#4ECDC4',
-          action: 'navigate',
-        },
-        {
-          id: 'language',
-          title: 'Dil',
-          subtitle: 'Türkçe',
-          icon: 'language',
-          color: '#FF6B6B',
-          action: 'navigate',
-        },
-      ],
-    },
-    {
-      title: 'Bildirimler',
-      items: [
-        {
-          id: 'notifications',
-          title: 'Bildirimler',
-          subtitle: 'Yeni harcama ve borç bildirimleri',
-          icon: 'notifications',
-          color: '#FFA726',
-          action: 'switch',
-          value: notifications,
-          onValueChange: setNotifications,
-        },
-        {
-          id: 'reminders',
-          title: 'Hatırlatmalar',
-          subtitle: 'Ödeme hatırlatmaları',
-          icon: 'alarm',
-          color: '#9C27B0',
-          action: 'navigate',
-        },
-      ],
-    },
-    {
-      title: 'Güvenlik',
-      items: [
-        {
-          id: 'biometric',
-          title: 'Parmak İzi / Yüz Tanıma',
-          subtitle: 'Biometric giriş',
-          icon: 'finger-print',
-          color: '#607D8B',
-          action: 'switch',
-          value: biometric,
-          onValueChange: setBiometric,
-        },
-        {
-          id: 'password',
-          title: 'Şifre Değiştir',
-          subtitle: 'Hesap güvenliği',
-          icon: 'lock-closed',
-          color: '#E91E63',
-          action: 'navigate',
-        },
-      ],
-    },
-    {
-      title: 'Uygulama',
-      items: [
-        {
-          id: 'autoSync',
-          title: 'Otomatik Senkronizasyon',
-          subtitle: 'Verileri otomatik güncelle',
-          icon: 'sync',
-          color: '#4CAF50',
-          action: 'switch',
-          value: autoSync,
-          onValueChange: setAutoSync,
-        },
-        {
-          id: 'darkMode',
-          title: 'Karanlık Mod',
-          subtitle: 'Karanlık tema kullan',
-          icon: 'moon',
-          color: '#673AB7',
-          action: 'switch',
-          value: darkMode,
-          onValueChange: setDarkMode,
-        },
-        {
-          id: 'export',
-          title: 'Veri Dışa Aktar',
-          subtitle: 'Tüm verileri yedekle',
-          icon: 'download',
-          color: '#FF9800',
-          action: 'navigate',
-        },
-        {
-          id: 'clear',
-          title: 'Önbelleği Temizle',
-          subtitle: 'Uygulama verilerini temizle',
-          icon: 'trash',
-          color: '#F44336',
-          action: 'alert',
-        },
-      ],
-    },
-    {
-      title: 'Destek',
-      items: [
-        {
-          id: 'help',
-          title: 'Yardım & SSS',
-          subtitle: 'Sık sorulan sorular',
-          icon: 'help-circle',
-          color: '#2196F3',
-          action: 'navigate',
-        },
-        {
-          id: 'feedback',
-          title: 'Geri Bildirim',
-          subtitle: 'Uygulama hakkında görüş',
-          icon: 'chatbubble',
-          color: '#00BCD4',
-          action: 'navigate',
-        },
-        {
-          id: 'about',
-          title: 'Hakkında',
-          subtitle: 'Versiyon 1.0.0',
-          icon: 'information-circle',
-          color: '#795548',
-          action: 'navigate',
-        },
-      ],
-    },
-  ];
-
-  const handleSettingPress = (item) => {
-    switch (item.action) {
-      case 'navigate':
-        // Navigate to specific screen
-        console.log(`Navigate to ${item.id}`);
-        break;
-      case 'alert':
-        if (item.id === 'clear') {
-          Alert.alert(
-            'Önbelleği Temizle',
-            'Tüm uygulama verileri silinecek. Bu işlem geri alınamaz.',
-            [
-              { text: 'İptal', style: 'cancel' },
-              { text: 'Temizle', style: 'destructive', onPress: () => {
-                Alert.alert('Başarılı', 'Önbellek temizlendi');
-              }},
-            ]
-          );
-        }
-        break;
-      default:
-        break;
+  // Fetch groups from database
+  const fetchGroups = async () => {
+    try {
+      setLoading(true);
+      const response = await dashboardAPI.getUserGroups();
+      if (response.data.success) {
+        setGroups(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const renderSettingItem = (item) => (
-    <TouchableOpacity
-      key={item.id}
-      style={styles.settingItem}
-      onPress={() => handleSettingPress(item)}
-    >
-      <View style={styles.settingLeft}>
-        <View style={[styles.settingIcon, { backgroundColor: item.color }]}>
-          <Ionicons name={item.icon} size={20} color="white" />
-        </View>
-        <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>{item.title}</Text>
-          <Text style={styles.settingSubtitle}>{item.subtitle}</Text>
-        </View>
-      </View>
-      <View style={styles.settingRight}>
-        {item.action === 'switch' ? (
-          <Switch
-            value={item.value}
-            onValueChange={item.onValueChange}
-            trackColor={{ false: '#E5E7EB', true: '#6366F1' }}
-            thumbColor={item.value ? '#FFFFFF' : '#FFFFFF'}
-          />
-        ) : (
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-        )}
-      </View>
-    </TouchableOpacity>
+  // Fetch groups when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchGroups();
+    }, [])
   );
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Sign Out', 
+          style: 'destructive', 
+          onPress: () => logout()
+        },
+      ]
+    );
+  };
+
+  const handleDeleteGroup = async (groupId, groupName) => {
+    Alert.alert(
+      'Delete Group',
+      `Are you sure you want to delete "${groupName}"? This action cannot be undone and all expenses related to this group will be deleted.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('Deleting group with ID:', groupId);
+              const response = await groupAPI.deleteGroup(groupId);
+              console.log('Delete response:', response.data);
+              // Remove from local state
+              setGroups(prevGroups => prevGroups.filter(g => g.id !== groupId));
+              Alert.alert('Success', 'Group deleted successfully.');
+            } catch (error) {
+              console.error('Error deleting group:', error);
+              console.error('Error response:', error.response?.data);
+              console.error('Error status:', error.response?.status);
+              Alert.alert('Error', `An error occurred while deleting the group: ${error.response?.data?.message || error.message}`);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Ayarlar</Text>
+        <Text style={styles.headerTitle}>Settings</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -237,47 +109,67 @@ export default function SettingsScreen() {
         <View style={styles.profileSection}>
           <View style={styles.profileCard}>
             <View style={styles.avatarContainer}>
-              <Text style={styles.avatar}>{userProfile.avatar}</Text>
+              <Text style={styles.avatarText}>{getInitials(user?.name)}</Text>
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{userProfile.name}</Text>
-              <Text style={styles.profileEmail}>{userProfile.email}</Text>
+              <Text style={styles.label}>Name</Text>
+              <Text style={styles.profileName}>{user?.name || 'User'}</Text>
+              
+              <Text style={[styles.label, styles.emailLabel]}>Email</Text>
+              <Text style={styles.profileEmail}>{user?.email || 'user@example.com'}</Text>
             </View>
-            <TouchableOpacity style={styles.editButton}>
-              <Ionicons name="pencil" size={20} color="#6366F1" />
-            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Settings Sections */}
-        {settingsSections.map((section) => (
-          <View key={section.title} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <View style={styles.sectionContent}>
-              {section.items.map(renderSettingItem)}
-            </View>
+        {/* Delete Groups Section */}
+        <View style={styles.deleteGroupSection}>
+          <Text style={styles.sectionTitle}>Manage Groups</Text>
+          <View style={styles.groupsList}>
+            {loading ? (
+              <View style={styles.loadingState}>
+                <ActivityIndicator size="large" color="#6366F1" />
+                <Text style={styles.loadingText}>Loading groups...</Text>
+              </View>
+            ) : groups.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="folder-open-outline" size={48} color="#9CA3AF" />
+                <Text style={styles.emptyText}>You don't have any groups yet</Text>
+              </View>
+            ) : (
+              groups.map((group, index) => (
+                <View 
+                  key={group.id} 
+                  style={[
+                    styles.groupItem,
+                    index === groups.length - 1 && styles.lastGroupItem
+                  ]}
+                >
+                  <View style={styles.groupItemLeft}>
+                    <View style={[styles.groupColorDot, { backgroundColor: group.color }]} />
+                    <View style={styles.groupItemInfo}>
+                      <Text style={styles.groupItemName}>{group.name}</Text>
+                      <Text style={styles.groupItemMembers}>{group.members} members</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => handleDeleteGroup(group.id, group.name)}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#F44336" />
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
           </View>
-        ))}
+        </View>
 
         {/* Logout Button */}
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() => {
-            Alert.alert(
-              'Çıkış Yap',
-              'Hesabınızdan çıkış yapmak istediğinizden emin misiniz?',
-              [
-                { text: 'İptal', style: 'cancel' },
-                { text: 'Çıkış Yap', style: 'destructive', onPress: () => {
-                  // Handle logout
-                  console.log('Logout pressed');
-                }},
-              ]
-            );
-          }}
+          onPress={handleLogout}
         >
           <Ionicons name="log-out" size={20} color="#F44336" />
-          <Text style={styles.logoutText}>Çıkış Yap</Text>
+          <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -306,14 +198,12 @@ const styles = StyleSheet.create({
   },
   profileSection: {
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingVertical: 30,
   },
   profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: 'white',
     borderRadius: 16,
-    padding: 20,
+    padding: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -321,86 +211,119 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   avatarContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#F3F4F6',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#6366F1',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 15,
+    marginBottom: 20,
+    alignSelf: 'center',
   },
-  avatar: {
-    fontSize: 30,
+  avatarText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: 'white',
   },
   profileInfo: {
-    flex: 1,
+    alignItems: 'center',
   },
-  profileName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 16,
     marginBottom: 4,
   },
+  emailLabel: {
+    marginTop: 12,
+  },
+  profileName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
   profileEmail: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#6B7280',
   },
-  editButton: {
-    padding: 8,
-  },
-  section: {
+  deleteGroupSection: {
+    paddingHorizontal: 20,
     marginTop: 20,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 10,
-    paddingHorizontal: 20,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 15,
   },
-  sectionContent: {
+  groupsList: {
     backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  settingItem: {
+  loadingState: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 12,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 12,
+  },
+  groupItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  settingLeft: {
+  lastGroupItem: {
+    borderBottomWidth: 0,
+  },
+  groupItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  settingIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+  groupColorDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     marginRight: 12,
   },
-  settingInfo: {
+  groupItemInfo: {
     flex: 1,
   },
-  settingTitle: {
+  groupItemName: {
     fontSize: 16,
     fontWeight: '500',
     color: '#1F2937',
     marginBottom: 2,
   },
-  settingSubtitle: {
-    fontSize: 14,
+  groupItemMembers: {
+    fontSize: 12,
     color: '#6B7280',
   },
-  settingRight: {
-    alignItems: 'center',
+  deleteButton: {
+    padding: 8,
   },
   logoutButton: {
     flexDirection: 'row',
@@ -408,7 +331,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'white',
     marginHorizontal: 20,
-    marginTop: 30,
+    marginTop: 20,
     marginBottom: 50,
     paddingVertical: 16,
     borderRadius: 12,
