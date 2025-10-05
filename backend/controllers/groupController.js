@@ -73,8 +73,11 @@ exports.createGroup = async (req, res) => {
 exports.addExpense = async (req, res) => {
   try {
     const { groupId } = req.params;
-    const { amount, description, paid_by, participants, custom_amounts, split_type } = req.body;
+    const { amount, description, paid_by, participants, custom_amounts, split_type, currency, currency_symbol } = req.body;
     const userId = req.user.id;
+    
+    const expenseCurrency = currency || 'TRY';
+    const expenseCurrencySymbol = currency_symbol || '₺';
 
     // Basic validation
     if (!amount || Number(amount) <= 0) {
@@ -136,16 +139,16 @@ exports.addExpense = async (req, res) => {
       }
 
       await pool.query(
-        'INSERT INTO expenses (group_id, user_id, paid_by, amount, description) VALUES (?, ?, ?, ?, ?)',
-        [groupId, memberId, paidById, memberAmount, description || null]
+        'INSERT INTO expenses (group_id, user_id, paid_by, amount, description, currency, currency_symbol) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [groupId, memberId, paidById, memberAmount, description || null, expenseCurrency, expenseCurrencySymbol]
       );
     }
 
     // If payer is NOT among participants, create a separate record for them
     if (!payerIsParticipant) {
       await pool.query(
-        'INSERT INTO expenses (group_id, user_id, paid_by, amount, description) VALUES (?, ?, ?, ?, ?)',
-        [groupId, paidById, paidById, -totalAmount, description || null]
+        'INSERT INTO expenses (group_id, user_id, paid_by, amount, description, currency, currency_symbol) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [groupId, paidById, paidById, -totalAmount, description || null, expenseCurrency, expenseCurrencySymbol]
       );
     }
 
@@ -348,6 +351,8 @@ exports.getGroupDetails = async (req, res) => {
         e.created_at,
         e.user_id,
         e.paid_by,
+        e.currency,
+        e.currency_symbol,
         u1.name as user_name,
         u2.name as paid_by_name
       FROM expenses e
@@ -358,20 +363,37 @@ exports.getGroupDetails = async (req, res) => {
       [groupId]
     );
 
-    // Calculate total income and expenses
-    let totalIncome = 0;
-    let totalExpenses = 0;
+    // Calculate total income and expenses by currency
+    const incomesByCurrency = {};
+    const expensesByCurrency = {};
 
     expensesResult.rows.forEach(exp => {
       const amount = parseFloat(exp.amount);
+      const currency = exp.currency || 'TRY';
+      const symbol = exp.currency_symbol || '₺';
+      
       if (amount < 0) {
-        totalIncome += Math.abs(amount);
+        // Income
+        if (!incomesByCurrency[currency]) {
+          incomesByCurrency[currency] = { total: 0, symbol };
+        }
+        incomesByCurrency[currency].total += Math.abs(amount);
       } else {
-        totalExpenses += amount;
+        // Expense
+        if (!expensesByCurrency[currency]) {
+          expensesByCurrency[currency] = { total: 0, symbol };
+        }
+        expensesByCurrency[currency].total += amount;
       }
     });
 
-    // Create balance matrix (who owes whom)
+    // Calculate totals for backward compatibility
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    Object.values(incomesByCurrency).forEach(curr => totalIncome += curr.total);
+    Object.values(expensesByCurrency).forEach(curr => totalExpenses += curr.total);
+
+    // Create balance matrix (who owes whom) by currency
     const balanceMatrix = [];
     const members = membersResult.rows;
 
@@ -380,28 +402,42 @@ exports.getGroupDetails = async (req, res) => {
         const member1 = members[i];
         const member2 = members[j];
         
-        // Calculate net balance between two members
+        // Calculate net balance between two members for each currency
         const expensesBetween = expensesResult.rows.filter(exp => 
           (exp.user_id === member1.id && exp.paid_by === member2.id) ||
           (exp.user_id === member2.id && exp.paid_by === member1.id)
         );
 
-        let netBalance = 0;
+        // Group by currency
+        const balancesByCurrency = {};
         expensesBetween.forEach(exp => {
+          const currency = exp.currency || 'TRY';
+          const symbol = exp.currency_symbol || '₺';
+          
+          if (!balancesByCurrency[currency]) {
+            balancesByCurrency[currency] = { balance: 0, symbol };
+          }
+          
           if (exp.paid_by === member1.id && exp.user_id === member2.id) {
-            netBalance += parseFloat(exp.amount);
+            balancesByCurrency[currency].balance += parseFloat(exp.amount);
           } else if (exp.paid_by === member2.id && exp.user_id === member1.id) {
-            netBalance -= parseFloat(exp.amount);
+            balancesByCurrency[currency].balance -= parseFloat(exp.amount);
           }
         });
 
-        if (Math.abs(netBalance) > 0.01) {
-          balanceMatrix.push({
-            from: netBalance > 0 ? member2.name : member1.name,
-            to: netBalance > 0 ? member1.name : member2.name,
-            amount: Math.abs(netBalance)
-          });
-        }
+        // Create balance entries for each currency
+        Object.entries(balancesByCurrency).forEach(([currency, data]) => {
+          const netBalance = data.balance;
+          if (Math.abs(netBalance) > 0.01) {
+            balanceMatrix.push({
+              from: netBalance > 0 ? member2.name : member1.name,
+              to: netBalance > 0 ? member1.name : member2.name,
+              amount: Math.abs(netBalance),
+              currency: currency,
+              currencySymbol: data.symbol
+            });
+          }
+        });
       }
     }
 
@@ -427,7 +463,9 @@ exports.getGroupDetails = async (req, res) => {
           totalExpenses,
           netBalance: totalIncome - totalExpenses,
           memberCount: members.length,
-          expenseCount: expensesResult.rows.length
+          expenseCount: expensesResult.rows.length,
+          incomesByCurrency,
+          expensesByCurrency
         },
         balances: balanceMatrix,
         recentExpenses: expensesResult.rows.slice(0, 10).map(exp => ({
@@ -436,7 +474,9 @@ exports.getGroupDetails = async (req, res) => {
           amount: parseFloat(exp.amount),
           userName: exp.user_name,
           paidByName: exp.paid_by_name,
-          createdAt: exp.created_at
+          createdAt: exp.created_at,
+          currency: exp.currency || 'TRY',
+          currencySymbol: exp.currency_symbol || '₺'
         }))
       }
     });

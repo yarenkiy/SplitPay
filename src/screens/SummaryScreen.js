@@ -100,22 +100,13 @@ export default function SummaryScreen() {
         </View>
         <Ionicons name="chevron-forward" size={24} color="#64748b" />
       </View>
-      <View style={styles.groupCardFooter}>
-        <Text style={styles.groupCardLabel}>Your Balance</Text>
-        <Text style={[
-          styles.groupCardBalance,
-          { color: group.debt > 0 ? '#ef4444' : group.debt < 0 ? '#10b981' : '#64748b' }
-        ]}>
-          ₺{Math.abs(group.debt).toLocaleString()}
-        </Text>
-      </View>
     </TouchableOpacity>
   );
 
   const renderGroupsList = () => (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <LinearGradient
-        colors={['#0EA5E9', '#3B82F6']}
+        colors={['#667eea', '#764ba2']}
         style={styles.headerGradient}
       >
         <Text style={styles.headerTitle}>My Groups</Text>
@@ -125,7 +116,7 @@ export default function SummaryScreen() {
       <View style={styles.content}>
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0EA5E9" />
+            <ActivityIndicator size="large" color="#667eea" />
             <Text style={styles.loadingText}>Loading groups...</Text>
           </View>
         ) : groups.length === 0 ? (
@@ -149,13 +140,13 @@ export default function SummaryScreen() {
         <View style={styles.container}>
           <View style={styles.detailsHeader}>
             <TouchableOpacity style={styles.backButton} onPress={handleBackToGroups}>
-              <Ionicons name="arrow-back" size={24} color="#0EA5E9" />
+              <Ionicons name="arrow-back" size={24} color="#667eea" />
             </TouchableOpacity>
             <Text style={styles.detailsHeaderTitle}>{selectedGroup.name}</Text>
             <View style={{ width: 40 }} />
           </View>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0EA5E9" />
+            <ActivityIndicator size="large" color="#667eea" />
             <Text style={styles.loadingText}>Loading details...</Text>
           </View>
         </View>
@@ -169,7 +160,7 @@ export default function SummaryScreen() {
         <StatusBar barStyle="light-content" />
         <ScrollView showsVerticalScrollIndicator={false}>
           <LinearGradient
-            colors={[selectedGroup.color || '#0EA5E9', '#3B82F6']}
+            colors={[selectedGroup.color || '#667eea', '#764ba2']}
             style={styles.detailsHeaderGradient}
           >
             <View style={styles.detailsHeader}>
@@ -202,9 +193,17 @@ export default function SummaryScreen() {
                 <Ionicons name="arrow-up-circle" size={24} color="#10b981" />
                 <Text style={styles.summaryLabel}>Total Income</Text>
               </View>
-              <Text style={[styles.summaryValue, { color: '#10b981' }]}>
-                ₺{groupDetails.summary.totalIncome.toLocaleString()}
-              </Text>
+              {groupDetails.summary.incomesByCurrency && Object.keys(groupDetails.summary.incomesByCurrency).length > 0 ? (
+                Object.entries(groupDetails.summary.incomesByCurrency).map(([currency, data]) => (
+                  <Text key={currency} style={[styles.summaryValue, { color: '#10b981', fontSize: 22, marginBottom: 4 }]}>
+                    {data.symbol}{data.total.toLocaleString()} {currency}
+                  </Text>
+                ))
+              ) : (
+                <Text style={[styles.summaryValue, { color: '#10b981' }]}>
+                  ₺0
+                </Text>
+              )}
             </View>
 
             <View style={styles.summaryCard}>
@@ -212,9 +211,17 @@ export default function SummaryScreen() {
                 <Ionicons name="arrow-down-circle" size={24} color="#ef4444" />
                 <Text style={styles.summaryLabel}>Total Expenses</Text>
               </View>
-              <Text style={[styles.summaryValue, { color: '#ef4444' }]}>
-                ₺{groupDetails.summary.totalExpenses.toLocaleString()}
-              </Text>
+              {groupDetails.summary.expensesByCurrency && Object.keys(groupDetails.summary.expensesByCurrency).length > 0 ? (
+                Object.entries(groupDetails.summary.expensesByCurrency).map(([currency, data]) => (
+                  <Text key={currency} style={[styles.summaryValue, { color: '#ef4444', fontSize: 22, marginBottom: 4 }]}>
+                    {data.symbol}{data.total.toLocaleString()} {currency}
+                  </Text>
+                ))
+              ) : (
+                <Text style={[styles.summaryValue, { color: '#ef4444' }]}>
+                  ₺0
+                </Text>
+              )}
             </View>
 
             <View style={styles.summaryCard}>
@@ -241,7 +248,7 @@ export default function SummaryScreen() {
           {/* Members Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="people" size={20} color="#0EA5E9" />
+              <Ionicons name="people" size={20} color="#667eea" />
               <Text style={styles.sectionTitle}>Members</Text>
             </View>
             <View style={styles.card}>
@@ -260,12 +267,6 @@ export default function SummaryScreen() {
                     <Text style={styles.memberEmail}>{member.email}</Text>
                   </View>
                   <View style={styles.memberBalance}>
-                    <Text style={[
-                      styles.memberBalanceText,
-                      { color: member.balance > 0 ? '#ef4444' : member.balance < 0 ? '#10b981' : '#64748b' }
-                    ]}>
-                      {member.balance > 0 ? '+' : ''}₺{Math.abs(member.balance).toLocaleString()}
-                    </Text>
                     <Text style={styles.memberBalanceLabel}>
                       {member.balance > 0 ? 'owes' : member.balance < 0 ? 'gets back' : 'settled'}
                     </Text>
@@ -279,7 +280,7 @@ export default function SummaryScreen() {
           {groupDetails.balances.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="git-compare" size={20} color="#0EA5E9" />
+                <Ionicons name="git-compare" size={20} color="#667eea" />
                 <Text style={styles.sectionTitle}>Who Owes Whom</Text>
               </View>
               <View style={styles.card}>
@@ -290,11 +291,13 @@ export default function SummaryScreen() {
                   ]}>
                     <View style={styles.balanceFlow}>
                       <Text style={styles.balanceFromName}>{balance.from}</Text>
-                      <Ionicons name="arrow-forward" size={20} color="#0EA5E9" />
+                      <Ionicons name="arrow-forward" size={20} color="#667eea" />
                       <Text style={styles.balanceToName}>{balance.to}</Text>
                     </View>
                     <View style={styles.balanceAmountBox}>
-                      <Text style={styles.balanceAmount}>₺{balance.amount.toLocaleString()}</Text>
+                      <Text style={styles.balanceAmount}>
+                        {balance.currencySymbol || '₺'}{balance.amount.toLocaleString()}
+                      </Text>
                     </View>
                   </View>
                 ))}
@@ -306,7 +309,7 @@ export default function SummaryScreen() {
           {groupDetails.recentExpenses.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="receipt" size={20} color="#0EA5E9" />
+                <Ionicons name="receipt" size={20} color="#667eea" />
                 <Text style={styles.sectionTitle}>Recent Expenses</Text>
               </View>
               <View style={styles.card}>
@@ -328,7 +331,7 @@ export default function SummaryScreen() {
                       styles.expenseAmount,
                       { color: expense.amount > 0 ? '#ef4444' : '#10b981' }
                     ]}>
-                      {expense.amount > 0 ? '+' : ''}₺{Math.abs(expense.amount).toLocaleString()}
+                      {expense.amount > 0 ? '+' : ''}{expense.currencySymbol || '₺'}{Math.abs(expense.amount).toLocaleString()}
                     </Text>
                   </View>
                 ))}
@@ -402,7 +405,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 20,
     padding: 20,
-    shadowColor: '#0EA5E9',
+    shadowColor: '#667eea',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -595,7 +598,7 @@ const styles = StyleSheet.create({
   memberAvatarText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#0EA5E9',
+    color: '#667eea',
   },
   memberInfo: {
     flex: 1,
@@ -654,7 +657,7 @@ const styles = StyleSheet.create({
   balanceAmount: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0EA5E9',
+    color: '#667eea',
   },
   expenseItem: {
     flexDirection: 'row',

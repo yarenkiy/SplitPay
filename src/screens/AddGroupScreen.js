@@ -21,18 +21,18 @@ export default function AddGroupScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedEmoji, setSelectedEmoji] = useState('👥');
-  const [color, setColor] = useState('#0EA5E9');
+  const [color, setColor] = useState('#667eea');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const groupTypes = [
-    { emoji: '🏖️', label: 'Holiday', color: '#0EA5E9' },
+    { emoji: '🏖️', label: 'Holiday', color: '#667eea' },
     { emoji: '✈️', label: 'Trip', color: '#3B82F6' },
     { emoji: '🏠', label: 'Home', color: '#10B981' },
     { emoji: '🍽️', label: 'Food', color: '#F59E0B' },
     { emoji: '🎉', label: 'Party', color: '#EC4899' },
     { emoji: '🎓', label: 'School', color: '#8B5CF6' },
     { emoji: '💼', label: 'Work', color: '#6366F1' },
-    { emoji: '👥', label: 'Friends', color: '#14B8A6' },
+    { emoji: '👥', label: 'Friends', color: '#764ba2' },
     { emoji: '💪', label: 'Gym', color: '#EF4444' },
     { emoji: '🎮', label: 'Gaming', color: '#A855F7' },
     { emoji: '⚽', label: 'Sports', color: '#22C55E' },
@@ -40,8 +40,8 @@ export default function AddGroupScreen() {
   ];
 
   const presetColors = [
-    '#0EA5E9', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', 
-    '#F59E0B', '#10B981', '#14B8A6', '#EF4444', '#F97316'
+    '#667eea', '#764ba2', '#f093fb', '#6366F1', '#8B5CF6', '#EC4899', 
+    '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#F97316'
   ];
 
   const validate = () => {
@@ -94,7 +94,7 @@ export default function AddGroupScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0EA5E9', '#3B82F6']}
+        colors={['#667eea', '#764ba2']}
         style={styles.headerGradient}
       >
         <View style={styles.header}>
@@ -121,7 +121,7 @@ export default function AddGroupScreen() {
           {/* Group Type Selection */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="apps" size={20} color="#0EA5E9" />
+              <Ionicons name="apps" size={20} color="#667eea" />
               <Text style={styles.sectionTitle}>Group Type</Text>
             </View>
             <View style={styles.typeGrid}>
@@ -150,7 +150,7 @@ export default function AddGroupScreen() {
           {/* Group Name */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="text" size={20} color="#0EA5E9" />
+              <Ionicons name="text" size={20} color="#667eea" />
               <Text style={styles.sectionTitle}>Group Name</Text>
             </View>
             <View style={styles.inputContainer}>
@@ -168,7 +168,7 @@ export default function AddGroupScreen() {
           {/* Description (Optional) */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="document-text" size={20} color="#0EA5E9" />
+              <Ionicons name="document-text" size={20} color="#667eea" />
               <Text style={styles.sectionTitle}>Description (Optional)</Text>
             </View>
             <TextInput
@@ -185,7 +185,7 @@ export default function AddGroupScreen() {
           {/* Color Selection */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="color-palette" size={20} color="#0EA5E9" />
+              <Ionicons name="color-palette" size={20} color="#667eea" />
               <Text style={styles.sectionTitle}>Group Color</Text>
             </View>
             <View style={styles.colorGrid}>
@@ -209,7 +209,7 @@ export default function AddGroupScreen() {
 
           {/* Info Box */}
           <View style={styles.infoBox}>
-            <Ionicons name="information-circle" size={24} color="#0EA5E9" />
+            <Ionicons name="information-circle" size={24} color="#667eea" />
             <View style={styles.infoContent}>
               <Text style={styles.infoTitle}>How it works</Text>
               <Text style={styles.infoText}>
@@ -225,7 +225,7 @@ export default function AddGroupScreen() {
             disabled={isSubmitting}
           >
             <LinearGradient
-              colors={['#0EA5E9', '#3B82F6']}
+              colors={['#667eea', '#764ba2']}
               style={styles.createButtonGradient}
             >
               {isSubmitting ? (
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#0EA5E9',
+    shadowColor: '#667eea',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 20,
-    shadowColor: '#0EA5E9',
+    shadowColor: '#667eea',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

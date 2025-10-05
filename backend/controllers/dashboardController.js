@@ -46,6 +46,8 @@ const getDashboardData = async (req, res) => {
         e.id,
         e.description,
         e.amount,
+        e.currency,
+        e.currency_symbol,
         e.created_at,
         g.name as group_name,
         g.color as group_color,
@@ -84,7 +86,7 @@ const getDashboardData = async (req, res) => {
         activities: activitiesResult.rows.map(activity => ({
           id: activity.id,
           type: activity.activity_type,
-          message: `${activity.description} - ₺${Math.abs(activity.amount)}`,
+          message: `${activity.description} - ${activity.currency_symbol || '₺'}${Math.abs(activity.amount)}`,
           group: activity.group_name,
           time: formatTimeAgo(activity.created_at),
           icon: getActivityIcon(activity.activity_type),
@@ -182,6 +184,8 @@ const getRecentActivities = async (req, res) => {
         e.id,
         e.description,
         e.amount,
+        e.currency,
+        e.currency_symbol,
         e.created_at,
         g.name as group_name,
         g.color as group_color,
@@ -206,7 +210,7 @@ const getRecentActivities = async (req, res) => {
       data: result.rows.map(activity => ({
         id: activity.id,
         type: activity.activity_type,
-        message: `${activity.description} - ₺${Math.abs(activity.amount)}`,
+        message: `${activity.description} - ${activity.currency_symbol || '₺'}${Math.abs(activity.amount)}`,
         group: activity.group_name,
         time: formatTimeAgo(activity.created_at),
         icon: getActivityIcon(activity.activity_type),
@@ -223,9 +227,12 @@ const getRecentActivities = async (req, res) => {
 const formatTimeAgo = (date) => {
   const now = new Date();
   const activityDate = new Date(date);
-  const diffInHours = Math.floor((now - activityDate) / (1000 * 60 * 60));
+  const diffInMinutes = Math.floor((now - activityDate) / (1000 * 60));
   
-  if (diffInHours < 1) return 'Az önce';
+  if (diffInMinutes < 1) return 'Az önce';
+  if (diffInMinutes < 60) return `${diffInMinutes} dakika önce`;
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) return `${diffInHours} saat önce`;
   
   const diffInDays = Math.floor(diffInHours / 24);

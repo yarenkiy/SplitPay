@@ -3,16 +3,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 const CURRENCIES = [
@@ -176,6 +176,8 @@ export default function AddExpenseScreen() {
         paid_by: paidBy,
         participants: participantIds,
         split_type: splitType,
+        currency: selectedCurrency.code,
+        currency_symbol: selectedCurrency.symbol,
       };
 
       // Add custom amounts if custom split
@@ -210,7 +212,7 @@ export default function AddExpenseScreen() {
   const renderGroupSelector = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Ionicons name="people" size={22} color="#0EA5E9" />
+        <Ionicons name="people" size={22} color="#667eea" />
         <Text style={styles.sectionTitle}>Select Group</Text>
       </View>
       
@@ -261,7 +263,7 @@ export default function AddExpenseScreen() {
   const renderAmountSection = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Ionicons name="cash" size={22} color="#0EA5E9" />
+        <Ionicons name="cash" size={22} color="#667eea" />
         <Text style={styles.sectionTitle}>Amount</Text>
       </View>
       
@@ -304,7 +306,7 @@ export default function AddExpenseScreen() {
   const renderCategorySelector = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Ionicons name="grid" size={22} color="#0EA5E9" />
+        <Ionicons name="grid" size={22} color="#667eea" />
         <Text style={styles.sectionTitle}>Category</Text>
       </View>
       <View style={styles.categoryGrid}>
@@ -352,7 +354,7 @@ export default function AddExpenseScreen() {
   const renderPaidBySection = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Ionicons name="wallet" size={22} color="#0EA5E9" />
+        <Ionicons name="wallet" size={22} color="#667eea" />
         <Text style={styles.sectionTitle}>Paid By</Text>
       </View>
       <View style={styles.membersList}>
@@ -390,7 +392,7 @@ export default function AddExpenseScreen() {
   return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="git-network" size={22} color="#0EA5E9" />
+          <Ionicons name="git-network" size={22} color="#667eea" />
           <Text style={styles.sectionTitle}>Split Between</Text>
         </View>
         <Text style={styles.sectionSubtitle}>Select who will share this expense</Text>
@@ -404,7 +406,7 @@ export default function AddExpenseScreen() {
             <Ionicons 
               name="pie-chart" 
               size={20} 
-              color={splitType === 'equal' ? '#0EA5E9' : '#9CA3AF'} 
+              color={splitType === 'equal' ? '#667eea' : '#9CA3AF'} 
             />
             <Text style={[
               styles.splitTypeText,
@@ -420,7 +422,7 @@ export default function AddExpenseScreen() {
             <Ionicons 
               name="create" 
               size={20} 
-              color={splitType === 'custom' ? '#0EA5E9' : '#9CA3AF'} 
+              color={splitType === 'custom' ? '#667eea' : '#9CA3AF'} 
             />
             <Text style={[
               styles.splitTypeText,
@@ -503,7 +505,7 @@ export default function AddExpenseScreen() {
   const renderDescriptionInput = () => (
             <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Ionicons name="document-text" size={22} color="#0EA5E9" />
+        <Ionicons name="document-text" size={22} color="#667eea" />
         <Text style={styles.sectionTitle}>Description</Text>
         <Text style={styles.optionalLabel}>(Optional)</Text>
       </View>
@@ -531,7 +533,7 @@ export default function AddExpenseScreen() {
     <View style={styles.container}>
       {/* Modern Header */}
       <LinearGradient
-        colors={['#0EA5E9', '#06B6D4', '#14B8A6']}
+        colors={['#667eea', '#764ba2', '#f093fb']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
@@ -570,7 +572,7 @@ export default function AddExpenseScreen() {
                 disabled={isSubmitting}
               >
                 <LinearGradient
-                  colors={['#0EA5E9', '#06B6D4']}
+                  colors={['#667eea', '#764ba2']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.submitGradient}
@@ -711,7 +713,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   groupCardSelected: {
-    borderColor: '#0EA5E9',
+    borderColor: '#667eea',
     backgroundColor: '#F0F9FF',
   },
   groupColorBadge: {
@@ -740,7 +742,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#0EA5E9',
+    backgroundColor: '#667eea',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -760,7 +762,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   currencyChipSelected: {
-    borderColor: '#0EA5E9',
+    borderColor: '#667eea',
     backgroundColor: '#F0F9FF',
   },
   currencyChipText: {
@@ -769,7 +771,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   currencyChipTextSelected: {
-    color: '#0EA5E9',
+    color: '#667eea',
     fontWeight: '700',
   },
   amountCard: {
@@ -778,7 +780,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 20,
     padding: 24,
-    shadowColor: '#0EA5E9',
+    shadowColor: '#667eea',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -787,7 +789,7 @@ const styles = StyleSheet.create({
   currencySymbolLarge: {
     fontSize: 36,
     fontWeight: '800',
-    color: '#0EA5E9',
+    color: '#667eea',
     marginRight: 12,
   },
   amountInput: {
@@ -850,7 +852,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   memberChipSelected: {
-    borderColor: '#0EA5E9',
+    borderColor: '#667eea',
     backgroundColor: '#F0F9FF',
   },
   memberChipAvatar: {
@@ -863,7 +865,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   memberChipAvatarSelected: {
-    backgroundColor: '#0EA5E9',
+    backgroundColor: '#667eea',
   },
   memberChipInitial: {
     fontSize: 14,
@@ -876,7 +878,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   memberChipNameSelected: {
-    color: '#0EA5E9',
+    color: '#667eea',
     fontWeight: '700',
   },
   splitTypeContainer: {
@@ -897,7 +899,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   splitTypeButtonActive: {
-    borderColor: '#0EA5E9',
+    borderColor: '#667eea',
     backgroundColor: '#F0F9FF',
   },
   splitTypeText: {
@@ -906,7 +908,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   splitTypeTextActive: {
-    color: '#0EA5E9',
+    color: '#667eea',
     fontWeight: '700',
   },
   participantsList: {
@@ -928,7 +930,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   participantCardSelected: {
-    borderColor: '#0EA5E9',
+    borderColor: '#667eea',
     backgroundColor: '#F0F9FF',
   },
   participantAvatar: {
@@ -941,7 +943,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   participantAvatarSelected: {
-    backgroundColor: '#0EA5E9',
+    backgroundColor: '#667eea',
   },
   participantInitial: {
     fontSize: 22,
@@ -956,7 +958,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   participantNameSelected: {
-    color: '#0EA5E9',
+    color: '#667eea',
     fontWeight: '700',
   },
   checkbox: {
@@ -969,8 +971,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxSelected: {
-    backgroundColor: '#0EA5E9',
-    borderColor: '#0EA5E9',
+    backgroundColor: '#667eea',
+    borderColor: '#667eea',
   },
   amountRow: {
     marginTop: 10,
@@ -990,7 +992,7 @@ const styles = StyleSheet.create({
   },
   perPersonValue: {
     fontSize: 16,
-    color: '#0EA5E9',
+    color: '#667eea',
     fontWeight: '700',
   },
   customAmountInput: {
@@ -1006,7 +1008,7 @@ const styles = StyleSheet.create({
   customAmountLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0EA5E9',
+    color: '#667eea',
     marginRight: 8,
   },
   customAmountField: {
@@ -1033,7 +1035,7 @@ const styles = StyleSheet.create({
   submitButton: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#0EA5E9',
+    shadowColor: '#667eea',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

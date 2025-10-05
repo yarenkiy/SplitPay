@@ -24,6 +24,27 @@ api.interceptors.request.use(
   }
 );
 
+// Response interceptor to handle token expiration
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  async (error) => {
+    // If we get a 401 Unauthorized error, the token might be expired
+    if (error.response?.status === 401) {
+      // Only clear storage if we actually had a token
+      const token = await AsyncStorage.getItem('userToken');
+      if (token) {
+        console.log('Token expired or invalid, logging out...');
+        await AsyncStorage.removeItem('userToken');
+        await AsyncStorage.removeItem('userData');
+        // The AuthContext will automatically redirect to login
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   register: (userData) => api.post('/auth/register', userData),

@@ -18,6 +18,11 @@ export default function RegisterScreen() {
       return;
     }
 
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
@@ -25,7 +30,7 @@ export default function RegisterScreen() {
       
       if (result.success) {
         // Registration successful - AuthContext will automatically redirect to dashboard
-        Alert.alert('Success', 'Registration completed! Welcome to SplitPay.');
+        Alert.alert('Success', 'Registration completed! Welcome to LetSPLIT!');
       } else {
         // Registration failed, show error message
         Alert.alert('Registration Failed', result.error || 'An error occurred during registration');
@@ -39,7 +44,7 @@ export default function RegisterScreen() {
 
   return (
     <LinearGradient
-      colors={['#0EA5E9', '#06B6D4', '#14B8A6']}
+      colors={['#667eea', '#764ba2', '#f093fb']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.gradientBg}
@@ -49,13 +54,13 @@ export default function RegisterScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>SplitPay</Text>
+          <Text style={styles.logoText}>LetSPLIT</Text>
           <Text style={styles.tagline}>Join the community</Text>
         </View>
         
         <View style={styles.card}>
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join SplitPay to start splitting expenses</Text>
+          <Text style={styles.subtitle}>Join LetSPLIT to start splitting expenses</Text>
           
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Full Name</Text>
@@ -99,7 +104,7 @@ export default function RegisterScreen() {
             disabled={isLoading}
           >
             <LinearGradient
-              colors={isLoading ? ['#9CA3AF', '#9CA3AF'] : ['#0EA5E9', '#06B6D4']}
+              colors={isLoading ? ['#9CA3AF', '#9CA3AF'] : ['#667eea', '#764ba2']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.buttonGradient}
@@ -225,7 +230,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   loginLink: {
-    color: '#0EA5E9',
+    color: '#667eea',
     fontWeight: 'bold',
   },
 });

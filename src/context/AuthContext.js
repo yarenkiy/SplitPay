@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { createContext, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import { authAPI } from '../services/api';
 
 export const AuthContext = createContext();
@@ -30,6 +31,26 @@ export const AuthProvider = ({ children }) => {
     };
     loadToken();
   }, []);
+
+  // Check token when app comes back to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState === 'active') {
+        // App has come to the foreground, check if token still exists
+        const token = await AsyncStorage.getItem('userToken');
+        if (!token && userToken) {
+          // Token was removed (e.g., by response interceptor), log out
+          console.log('Token no longer exists, logging out...');
+          setUserToken(null);
+          setUser(null);
+        }
+      }
+    });
+
+    return () => {
+      subscription?.remove();
+    };
+  }, [userToken]);
 
   const login = async (email, password) => {
     try {

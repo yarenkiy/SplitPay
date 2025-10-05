@@ -8,6 +8,7 @@ import {
   Alert,
   Clipboard,
   Modal,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -30,6 +31,7 @@ export default function DashboardScreen() {
   console.log('DashboardScreen mounted');
   
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [summaryData, setSummaryData] = useState({
     totalDebt: 0,
     totalCredit: 0,
@@ -68,6 +70,24 @@ export default function DashboardScreen() {
       setIsLoading(false);
     }
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const response = await dashboardAPI.getDashboardData();
+      
+      if (response.data.success) {
+        const { summary, groups: userGroups, activities } = response.data.data;
+        setSummaryData(summary);
+        setGroups(userGroups);
+        setRecentActivities(activities);
+      }
+    } catch (error) {
+      console.error('Refresh error:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   const handleJoinGroup = async () => {
     if (!inviteCode || inviteCode.trim().length !== 6) {
@@ -118,17 +138,6 @@ export default function DashboardScreen() {
   };
 
   // --- UI Helpers ---
-  const renderSummaryCard = (title, amount, subtitle, color, icon) => (
-    <View style={[styles.summaryCard, { borderLeftColor: color }]}>
-      <View style={styles.summaryHeader}>
-        <Ionicons name={icon} size={24} color={color} />
-        <Text style={styles.summaryTitle}>{title}</Text>
-      </View>
-      <Text style={[styles.summaryAmount, { color }]}>₺{amount.toLocaleString()}</Text>
-      <Text style={styles.summarySubtitle}>{subtitle}</Text>
-    </View>
-  );
-
   const copyInviteCode = (code) => {
     Clipboard.setString(code);
     Alert.alert('Copied! 📋', `Invite code ${code} copied to clipboard`);
@@ -152,16 +161,9 @@ export default function DashboardScreen() {
         <View style={[styles.groupColor, { backgroundColor: group.color }]} />
         <View style={styles.groupInfo}>
           <Text style={styles.groupName}>{group.name}</Text>
-          <Text style={styles.groupMembers}>{group.members} member</Text>
+          <Text style={styles.groupMembers}>{group.members} members</Text>
         </View>
-        <View style={styles.groupBalance}>
-          <Text style={[
-            styles.groupBalanceText,
-            { color: group.debt > 0 ? '#FF6B6B' : group.debt < 0 ? '#4ECDC4' : '#666' }
-          ]}>
-            {group.debt > 0 ? '+' : ''}₺{Math.abs(group.debt).toLocaleString()}
-          </Text>
-        </View>
+        <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
       </View>
       
       <View style={styles.groupFooter}>
@@ -177,7 +179,7 @@ export default function DashboardScreen() {
             copyInviteCode(group.inviteCode);
           }}
         >
-          <Ionicons name="copy" size={16} color="#0EA5E9" />
+          <Ionicons name="copy" size={16} color="#667eea" />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -209,7 +211,7 @@ export default function DashboardScreen() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#0EA5E9" />
+        <StatusBar barStyle="light-content" backgroundColor="#667eea" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#667eea" />
           <Text style={styles.loadingText}>Loading data...</Text>
@@ -221,11 +223,11 @@ export default function DashboardScreen() {
   // --- Main UI ---
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0EA5E9" />
+      <StatusBar barStyle="light-content" backgroundColor="#667eea" />
       
       {/* Modern Gradient Header */}
       <LinearGradient
-        colors={['#0EA5E9', '#06B6D4', '#14B8A6']}
+        colors={['#667eea', '#764ba2', '#f093fb']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
@@ -233,7 +235,7 @@ export default function DashboardScreen() {
         <SafeAreaView>
           <View style={styles.headerContent}>
             <View style={styles.headerTextContainer}>
-              <Text style={styles.appName}>SplitPay</Text>
+              <Text style={styles.appName}>LetSPLIT</Text>
               <Text style={styles.greetingText}>Hi, {user?.name || 'User'}! 👋</Text>
             </View>
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -243,7 +245,20 @@ export default function DashboardScreen() {
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#667eea', '#764ba2', '#f093fb']}
+            tintColor="#667eea"
+            title="Loading..."
+            titleColor="#667eea"
+          />
+        }
+      >
         {/* Groups - Horizontal Scroll */}
         <View style={styles.groupsSection}>
           <Text style={styles.sectionTitle}>Your Groups</Text>
@@ -254,17 +269,6 @@ export default function DashboardScreen() {
           >
             {groups.map(renderGroupCard)}
           </ScrollView>
-        </View>
-
-        {/* Summary Cards */}
-        <View style={styles.summarySection}>
-          <Text style={styles.sectionTitle}>Summary</Text>
-          <View style={styles.summaryGrid}>
-            {renderSummaryCard('Total Debt', summaryData.totalDebt, 'You owe to others', '#FF6B6B', 'arrow-down')}
-            {renderSummaryCard('Total Credit', summaryData.totalCredit, 'Others owe you', '#4ECDC4', 'arrow-up')}
-            {renderSummaryCard('Balance', summaryData.balance, 'Credit - Debt',
-              summaryData.balance >= 0 ? '#4ECDC4' : '#FF6B6B', 'wallet')}
-          </View>
         </View>
 
         {/* Quick Actions */}
@@ -346,7 +350,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 16, fontSize: 16, color: '#0EA5E9', fontWeight: '600' },
+  loadingText: { marginTop: 16, fontSize: 16, color: '#667eea', fontWeight: '600' },
   headerGradient: { 
     paddingHorizontal: 24,
     paddingBottom: 24,
@@ -385,24 +389,7 @@ const styles = StyleSheet.create({
   },
   content: { flex: 1 },
   sectionTitle: { fontSize: 20, fontWeight: '700', color: '#1F2937', marginTop: 20, marginBottom: 14, letterSpacing: -0.5, paddingHorizontal: 20 },
-  summarySection: { paddingHorizontal: 20 },
-  summaryGrid: { gap: 16 },
-  summaryCard: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 22,
-    borderLeftWidth: 5,
-    shadowColor: '#C06FBB',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  summaryHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  summaryTitle: { fontSize: 14, fontWeight: '600', color: '#6B7280', marginLeft: 10 },
-  summaryAmount: { fontSize: 28, fontWeight: '800', marginBottom: 6, letterSpacing: -1 },
-  summarySubtitle: { fontSize: 13, color: '#9CA3AF', fontWeight: '500' },
-  quickActionsSection: { marginTop: 12, paddingHorizontal: 20 },
+  quickActionsSection: { marginTop: 20, paddingHorizontal: 20 },
   quickActionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   quickAction: {
     backgroundColor: 'white',
@@ -471,9 +458,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   inviteCodeLabel: { fontSize: 12, color: '#64748b', fontWeight: '600' },
-  inviteCode: { fontSize: 13, fontWeight: '800', color: '#0EA5E9', letterSpacing: 1 },
+  inviteCode: { fontSize: 13, fontWeight: '800', color: '#667eea', letterSpacing: 1 },
   copyButton: {
-    backgroundColor: '#e0f2fe',
+    backgroundColor: '#e9e7fd',
     padding: 8,
     borderRadius: 8,
   },
@@ -516,7 +503,7 @@ const styles = StyleSheet.create({
   modalDescription: { fontSize: 15, color: '#64748b', marginBottom: 24, lineHeight: 22 },
   codeInput: {
     borderWidth: 2,
-    borderColor: '#0EA5E9',
+    borderColor: '#667eea',
     borderRadius: 16,
     padding: 18,
     fontSize: 20,
@@ -528,13 +515,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   joinButton: {
-    backgroundColor: '#0EA5E9',
+    backgroundColor: '#667eea',
     borderRadius: 16,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#0EA5E9',
+    shadowColor: '#667eea',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

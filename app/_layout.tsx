@@ -1,8 +1,8 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useContext, useEffect } from 'react';
+import { useContext } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -11,22 +11,12 @@ import { SelectedGroupProvider } from '../src/context/SelectedGroupContext';
 
 function RootLayoutNav() {
   const { userToken, isLoading } = useContext(AuthContext);
-  const router = useRouter();
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (userToken) {
-        // User is logged in, redirect to dashboard
-        router.replace('/(tabs)');
-      } else {
-        // User is not logged in, redirect to login
-        router.replace('/login');
-      }
-    }
-  }, [userToken, isLoading, router]);
-
+  // No automatic redirect here, splash screen handles initial navigation
+  
   return (
     <Stack>
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="register" options={{ headerShown: false }} />

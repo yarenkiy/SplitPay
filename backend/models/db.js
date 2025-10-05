@@ -73,6 +73,8 @@ const initializeDatabase = async () => {
         paid_by INT,
         amount DECIMAL(10,2) NOT NULL,
         description TEXT,
+        currency VARCHAR(3) DEFAULT 'TRY',
+        currency_symbol VARCHAR(5) DEFAULT '₺',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT fk_expenses_group FOREIGN KEY (group_id) REFERENCES \`groups\` (id),
         CONSTRAINT fk_expenses_user FOREIGN KEY (user_id) REFERENCES users (id),

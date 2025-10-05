@@ -53,20 +53,9 @@ export default function GroupsScreen() {
         <View style={[styles.groupColor, { backgroundColor: group.color }]} />
         <View style={styles.groupInfo}>
           <Text style={styles.groupName}>{group.name}</Text>
-          <Text style={styles.groupMembers}>{group.members.length} üye</Text>
-          <Text style={styles.groupTotal}>Toplam: ₺{group.totalExpenses}</Text>
+          <Text style={styles.groupMembers}>{group.members.length} members</Text>
         </View>
-        <View style={styles.groupBalance}>
-          <Text style={[
-            styles.groupBalanceText,
-            { color: group.debt > 0 ? '#FF6B6B' : group.debt < 0 ? '#4ECDC4' : '#666' }
-          ]}>
-            {group.debt > 0 ? '+' : ''}₺{group.debt}
-          </Text>
-          <Text style={styles.balanceLabel}>
-            {group.debt > 0 ? 'Borç' : group.debt < 0 ? 'Alacak' : 'Eşit'}
-          </Text>
-        </View>
+        <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
       </View>
       <View style={styles.groupActions}>
         <TouchableOpacity style={styles.actionButton} onPress={() => {
