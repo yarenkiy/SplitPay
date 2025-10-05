@@ -300,6 +300,7 @@ exports.deleteGroup = async (req, res) => {
 
 // Get detailed group information
 exports.getGroupDetails = async (req, res) => {
+  console.log('🔵 getGroupDetails called - groupId:', req.params.groupId, 'userId:', req.user?.id);
   try {
     const { groupId } = req.params;
     const userId = req.user.id;
@@ -362,30 +363,118 @@ exports.getGroupDetails = async (req, res) => {
       ORDER BY e.created_at DESC`,
       [groupId]
     );
+    
+    console.log('📊 Expenses found:', expensesResult.rows.length);
+    console.log('Expenses data:', JSON.stringify(expensesResult.rows, null, 2));
 
-    // Calculate total income and expenses by currency
-    const incomesByCurrency = {};
-    const expensesByCurrency = {};
+    // Calculate my expenses and total expenses by currency
+    const myExpensesByCurrency = {};
+    const totalExpensesByCurrency = {};
+    
+    // Track unique expense transactions and calculate each member's share
+    const uniqueExpenses = new Map();
+    const memberShares = {}; // userId -> { currency -> share }
 
     expensesResult.rows.forEach(exp => {
       const amount = parseFloat(exp.amount);
       const currency = exp.currency || 'TRY';
       const symbol = exp.currency_symbol || '₺';
+      const userId = exp.user_id;
       
-      if (amount < 0) {
-        // Income
-        if (!incomesByCurrency[currency]) {
-          incomesByCurrency[currency] = { total: 0, symbol };
-        }
-        incomesByCurrency[currency].total += Math.abs(amount);
-      } else {
-        // Expense
-        if (!expensesByCurrency[currency]) {
-          expensesByCurrency[currency] = { total: 0, symbol };
-        }
-        expensesByCurrency[currency].total += amount;
+      // Create unique key for each expense transaction
+      const expenseKey = `${exp.description}-${exp.paid_by}-${exp.created_at}-${currency}`;
+      
+      // Track all amounts for each unique expense
+      if (!uniqueExpenses.has(expenseKey)) {
+        uniqueExpenses.set(expenseKey, {
+          currency,
+          symbol,
+          amounts: [],
+          userAmounts: {} // userId -> amount
+        });
+      }
+      const expense = uniqueExpenses.get(expenseKey);
+      expense.amounts.push(amount);
+      expense.userAmounts[userId] = amount;
+    });
+    
+    // Calculate each member's real expense (their share) for each transaction
+    console.log('=== Starting expense calculation ===');
+    console.log('uniqueExpenses count:', uniqueExpenses.size);
+    
+    uniqueExpenses.forEach(expense => {
+      const positiveAmounts = expense.amounts.filter(amt => amt > 0);
+      const negativeAmounts = expense.amounts.filter(amt => amt < 0);
+      
+      console.log('Processing expense:', {
+        amounts: expense.amounts,
+        positiveAmounts,
+        negativeAmounts
+      });
+      
+      if (positiveAmounts.length > 0 && negativeAmounts.length > 0) {
+        const totalDebt = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
+        const totalCredit = negativeAmounts.reduce((sum, amt) => sum + Math.abs(amt), 0);
+        
+        // Calculate total expense amount (what was actually spent)
+        // Total = what payer(s) paid = total credit + average share per participant
+        const participantCount = expense.amounts.length;
+        const avgShare = totalDebt / positiveAmounts.length;
+        
+        console.log('Calculation:', {
+          totalDebt,
+          totalCredit,
+          avgShare,
+          participantCount
+        });
+        
+        // For each user in this expense, their share is avgShare
+        // (everyone pays equally in a shared expense)
+        Object.entries(expense.userAmounts).forEach(([uid, amount]) => {
+          if (!memberShares[uid]) {
+            memberShares[uid] = {};
+          }
+          if (!memberShares[uid][expense.currency]) {
+            memberShares[uid][expense.currency] = { total: 0, symbol: expense.symbol };
+          }
+          
+          // Everyone's share is the average
+          // (whether they paid or owe money, their personal expense is the same)
+          const userShare = avgShare;
+          
+          console.log(`User ${uid}: adding ${userShare} to their ${expense.currency} share`);
+          memberShares[uid][expense.currency].total += userShare;
+        });
       }
     });
+
+    console.log('=== Final memberShares ===');
+    console.log(JSON.stringify(memberShares, null, 2));
+
+    // Calculate logged-in user's expenses (My Expenses)
+    if (memberShares[userId]) {
+      Object.entries(memberShares[userId]).forEach(([currency, data]) => {
+        myExpensesByCurrency[currency] = data;
+      });
+    }
+    
+    console.log('myExpensesByCurrency:', myExpensesByCurrency);
+    
+    // Calculate Total Expenses (sum of all members' shares)
+    Object.values(memberShares).forEach(userCurrencies => {
+      Object.entries(userCurrencies).forEach(([currency, data]) => {
+        if (!totalExpensesByCurrency[currency]) {
+          totalExpensesByCurrency[currency] = { total: 0, symbol: data.symbol };
+        }
+        totalExpensesByCurrency[currency].total += data.total;
+      });
+    });
+    
+    console.log('totalExpensesByCurrency:', totalExpensesByCurrency);
+
+    // Use new names for backward compatibility
+    const incomesByCurrency = myExpensesByCurrency;
+    const expensesByCurrency = totalExpensesByCurrency;
 
     // Calculate totals for backward compatibility
     let totalIncome = 0;

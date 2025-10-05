@@ -1,8 +1,8 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -11,8 +11,28 @@ import { SelectedGroupProvider } from '../src/context/SelectedGroupContext';
 
 function RootLayoutNav() {
   const { userToken, isLoading } = useContext(AuthContext);
+  const segments = useSegments();
+  const router = useRouter();
 
-  // No automatic redirect here, splash screen handles initial navigation
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === '(tabs)';
+    const onIndexPage = segments[0] === 'index' || segments.length === 0;
+    const onAuthPage = segments[0] === 'login' || segments[0] === 'register';
+    const onProtectedPage = segments[0] === 'expense' || segments[0] === 'group' || segments[0] === 'notes';
+
+    // Skip navigation on splash screen (index page handles its own navigation)
+    if (onIndexPage) return;
+
+    if (!userToken && (inAuthGroup || onProtectedPage)) {
+      // User is not authenticated but trying to access protected route
+      router.replace('/login');
+    } else if (userToken && onAuthPage) {
+      // User is authenticated but on auth screen, redirect to dashboard
+      router.replace('/(tabs)');
+    }
+  }, [userToken, isLoading, segments]);
   
   return (
     <Stack>

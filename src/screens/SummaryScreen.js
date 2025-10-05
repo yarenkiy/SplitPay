@@ -191,7 +191,7 @@ export default function SummaryScreen() {
             <View style={styles.summaryCard}>
               <View style={styles.summaryHeader}>
                 <Ionicons name="arrow-up-circle" size={24} color="#10b981" />
-                <Text style={styles.summaryLabel}>Total Income</Text>
+                <Text style={styles.summaryLabel}>My Expenses</Text>
               </View>
               {groupDetails.summary.incomesByCurrency && Object.keys(groupDetails.summary.incomesByCurrency).length > 0 ? (
                 Object.entries(groupDetails.summary.incomesByCurrency).map(([currency, data]) => (

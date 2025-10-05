@@ -295,9 +295,15 @@ export default function AddExpenseScreen() {
           style={styles.amountInput}
           placeholder="0.00"
           placeholderTextColor="#D1D5DB"
-          keyboardType="decimal-pad"
+          keyboardType="numeric"
           value={amount}
-          onChangeText={setAmount}
+          onChangeText={(text) => {
+            // Allow numbers, comma, and dot
+            const cleaned = text.replace(/[^0-9.,]/g, '');
+            // Replace comma with dot for consistency
+            const normalized = cleaned.replace(',', '.');
+            setAmount(normalized);
+          }}
         />
       </View>
     </View>
@@ -483,12 +489,18 @@ export default function AddExpenseScreen() {
                           style={styles.customAmountField}
                   placeholder="0.00"
                   placeholderTextColor="#9CA3AF"
-                          keyboardType="decimal-pad"
+                          keyboardType="numeric"
                           value={customAmounts[member.id] || ''}
-                          onChangeText={(text) => setCustomAmounts(prev => ({
-                            ...prev,
-                            [member.id]: text
-                          }))}
+                          onChangeText={(text) => {
+                            // Allow numbers, comma, and dot
+                            const cleaned = text.replace(/[^0-9.,]/g, '');
+                            // Replace comma with dot for consistency
+                            const normalized = cleaned.replace(',', '.');
+                            setCustomAmounts(prev => ({
+                              ...prev,
+                              [member.id]: normalized
+                            }));
+                          }}
                 />
               </View>
               )}
