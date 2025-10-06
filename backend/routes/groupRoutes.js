@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { createGroup, addExpense, getGroupMembers, searchUsers, joinGroupByCode, getGroupDetails, deleteGroup } = require('../controllers/groupController');
+const { createGroup, addExpense, getGroupMembers, searchUsers, joinGroupByCode, getGroupDetails, deleteGroup, deleteExpense, fixParticipantsCount } = require('../controllers/groupController');
 const authenticateToken = require('../middleware/authMiddleware');
 
 // Static routes first (before parameterized routes)
 router.post('/', authenticateToken, createGroup);
 router.post('/join', authenticateToken, joinGroupByCode);
 router.get('/search/users', authenticateToken, searchUsers);
+router.post('/migrate/fix-participants', authenticateToken, fixParticipantsCount);
+router.delete('/expenses/:expenseId', authenticateToken, deleteExpense);
 
 // Parameterized routes after static routes
 router.get('/:groupId/details', authenticateToken, getGroupDetails);

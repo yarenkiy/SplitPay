@@ -185,6 +185,34 @@ export default function DashboardScreen() {
     </TouchableOpacity>
   );
 
+  const handleDeleteActivity = async (activityId) => {
+    Alert.alert(
+      'Delete Activity',
+      'Are you sure you want to delete this activity?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await groupAPI.deleteExpense(activityId);
+              // Refresh the dashboard data to show updated activities
+              fetchDashboardData();
+            } catch (error) {
+              console.error('Delete activity error:', error);
+              const message = error.response?.data?.message || 'Failed to delete activity';
+              Alert.alert('Error', message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderActivityItem = (activity) => (
     <View style={styles.activityItem} key={activity.id}>
       <View style={[styles.activityIcon, { backgroundColor: activity.color }]}>
@@ -194,7 +222,15 @@ export default function DashboardScreen() {
         <Text style={styles.activityMessage}>{activity.message}</Text>
         <Text style={styles.activityGroup}>{activity.group}</Text>
       </View>
-      <Text style={styles.activityTime}>{activity.time}</Text>
+      <View style={styles.activityActions}>
+        <Text style={styles.activityTime}>{activity.time}</Text>
+        <TouchableOpacity 
+          style={styles.deleteButton}
+          onPress={() => handleDeleteActivity(activity.id)}
+        >
+          <Ionicons name="trash-outline" size={16} color="#ef4444" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -484,7 +520,15 @@ const styles = StyleSheet.create({
   activityContent: { flex: 1 },
   activityMessage: { fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 4, letterSpacing: -0.2 },
   activityGroup: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
-  activityTime: { fontSize: 11, color: '#9CA3AF', fontWeight: '600' },
+  activityActions: { alignItems: 'flex-end', justifyContent: 'space-between', height: 44 },
+  activityTime: { fontSize: 11, color: '#9CA3AF', fontWeight: '600', marginBottom: 4 },
+  deleteButton: {
+    backgroundColor: '#fef2f2',
+    padding: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
   // Modal styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { 

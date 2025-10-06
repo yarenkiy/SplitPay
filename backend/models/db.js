@@ -75,6 +75,7 @@ const initializeDatabase = async () => {
         description TEXT,
         currency VARCHAR(3) DEFAULT 'TRY',
         currency_symbol VARCHAR(5) DEFAULT '₺',
+        participants_count INT DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT fk_expenses_group FOREIGN KEY (group_id) REFERENCES \`groups\` (id),
         CONSTRAINT fk_expenses_user FOREIGN KEY (user_id) REFERENCES users (id),
@@ -96,6 +97,30 @@ const initializeDatabase = async () => {
         CONSTRAINT fk_notes_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
       )
     `);
+
+    // Migration: Add participants_count to existing expenses table if not exists
+    try {
+      await pool.query(`
+        ALTER TABLE expenses 
+        ADD COLUMN participants_count INT DEFAULT 1
+      `);
+      console.log('✅ Added participants_count column to expenses table');
+    } catch (err) {
+      // Ignore error if column already exists
+      if (err.code === 'ER_DUP_FIELDNAME' || err.message.includes('Duplicate column name')) {
+        console.log('ℹ️  participants_count column already exists');
+      } else {
+        throw err;
+      }
+    }
+
+    // Migration: Update existing expenses - mark shared expenses as participants_count = 2
+    await pool.query(`
+      UPDATE expenses 
+      SET participants_count = 2 
+      WHERE description IN ('Airbnb', 'Shopping', 'Beach bed', 'Transport', 'Food', 'Health')
+    `);
+    console.log('ℹ️  Updated participants_count for shared expenses to 2');
 
     console.log('✅ Database tables initialized successfully');
   } catch (error) {

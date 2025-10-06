@@ -74,6 +74,36 @@ export default function SummaryScreen() {
     }
   };
 
+  const handleDeleteExpense = async (expenseId) => {
+    Alert.alert(
+      'Delete Expense',
+      'Are you sure you want to delete this expense?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await groupAPI.deleteExpense(expenseId);
+              // Refresh the group details to show updated expenses
+              if (selectedGroup) {
+                fetchGroupDetails(selectedGroup.id);
+              }
+            } catch (error) {
+              console.error('Delete expense error:', error);
+              const message = error.response?.data?.message || 'Failed to delete expense';
+              Alert.alert('Error', message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleGroupSelect = (group) => {
     setSelectedGroup(group);
     fetchGroupDetails(group.id);
@@ -327,12 +357,20 @@ export default function SummaryScreen() {
                         {new Date(expense.createdAt).toLocaleDateString()}
                       </Text>
                     </View>
-                    <Text style={[
-                      styles.expenseAmount,
-                      { color: expense.amount > 0 ? '#ef4444' : '#10b981' }
-                    ]}>
-                      {expense.amount > 0 ? '+' : ''}{expense.currencySymbol || '₺'}{Math.abs(expense.amount).toLocaleString()}
-                    </Text>
+                    <View style={styles.expenseActions}>
+                      <Text style={[
+                        styles.expenseAmount,
+                        { color: expense.amount > 0 ? '#ef4444' : '#10b981' }
+                      ]}>
+                        {expense.amount > 0 ? '+' : ''}{expense.currencySymbol || '₺'}{Math.abs(expense.amount).toLocaleString()}
+                      </Text>
+                      <TouchableOpacity 
+                        style={styles.deleteExpenseButton}
+                        onPress={() => handleDeleteExpense(expense.id)}
+                      >
+                        <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))}
               </View>
@@ -684,8 +722,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#94a3b8',
   },
+  expenseActions: {
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    minHeight: 40,
+  },
   expenseAmount: {
     fontSize: 16,
     fontWeight: '800',
+    marginBottom: 4,
+  },
+  deleteExpenseButton: {
+    backgroundColor: '#fef2f2',
+    padding: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#fecaca',
   },
 });

@@ -118,6 +118,7 @@ exports.addExpense = async (req, res) => {
 
     // Check if payer is among participants
     const payerIsParticipant = participantIds.some(id => parseInt(id) === paidById);
+    const participantsCount = participantIds.length;
 
     // Create expense records for participants
     for (const participantId of participantIds) {
@@ -139,16 +140,16 @@ exports.addExpense = async (req, res) => {
       }
 
       await pool.query(
-        'INSERT INTO expenses (group_id, user_id, paid_by, amount, description, currency, currency_symbol) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [groupId, memberId, paidById, memberAmount, description || null, expenseCurrency, expenseCurrencySymbol]
+        'INSERT INTO expenses (group_id, user_id, paid_by, amount, description, currency, currency_symbol, participants_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [groupId, memberId, paidById, memberAmount, description || null, expenseCurrency, expenseCurrencySymbol, participantsCount]
       );
     }
 
     // If payer is NOT among participants, create a separate record for them
     if (!payerIsParticipant) {
       await pool.query(
-        'INSERT INTO expenses (group_id, user_id, paid_by, amount, description, currency, currency_symbol) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [groupId, paidById, paidById, -totalAmount, description || null, expenseCurrency, expenseCurrencySymbol]
+        'INSERT INTO expenses (group_id, user_id, paid_by, amount, description, currency, currency_symbol, participants_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [groupId, paidById, paidById, -totalAmount, description || null, expenseCurrency, expenseCurrencySymbol, participantsCount]
       );
     }
 
@@ -156,6 +157,53 @@ exports.addExpense = async (req, res) => {
   } catch (error) {
     console.error('addExpense error:', error);
     res.status(500).json({ message: 'Failed to add expense' });
+  }
+};
+
+// Migration: Fix participants_count for existing expenses
+exports.fixParticipantsCount = async (req, res) => {
+  try {
+    // Update all expenses to have correct participants_count based on actual expense records
+    // First, let's find all unique expense transactions and count their participants
+    const expenseGroups = await pool.query(`
+      SELECT 
+        description,
+        paid_by,
+        created_at,
+        currency,
+        COUNT(*) as participant_count
+      FROM expenses 
+      GROUP BY description, paid_by, created_at, currency
+      HAVING COUNT(*) > 0
+    `);
+    
+    console.log('Found expense groups:', expenseGroups.rows);
+    
+    let totalUpdated = 0;
+    
+    // Update each group of expenses with the correct participant count
+    for (const group of expenseGroups.rows) {
+      const result = await pool.query(`
+        UPDATE expenses 
+        SET participants_count = ?
+        WHERE description = ? 
+          AND paid_by = ? 
+          AND created_at = ? 
+          AND currency = ?
+      `, [group.participant_count, group.description, group.paid_by, group.created_at, group.currency]);
+      
+      totalUpdated += result.affectedRows;
+      console.log(`Updated ${result.affectedRows} expenses for ${group.description} to participants_count = ${group.participant_count}`);
+    }
+    
+    res.json({ 
+      message: 'Migration completed!',
+      totalUpdated,
+      groupsProcessed: expenseGroups.rows.length
+    });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({ message: 'Migration failed' });
   }
 };
 
@@ -298,6 +346,77 @@ exports.deleteGroup = async (req, res) => {
   }
 };
 
+// Delete an expense/activity (only the user who created it or group member can delete)
+// Note: Deletes ALL related expense records (the entire transaction)
+exports.deleteExpense = async (req, res) => {
+  try {
+    console.log('🗑️  DELETE EXPENSE REQUEST RECEIVED');
+    console.log('Params:', req.params);
+    console.log('User ID:', req.user?.id);
+    
+    const { expenseId } = req.params;
+    const userId = req.user.id;
+
+    console.log(`Attempting to delete expense ${expenseId} by user ${userId}`);
+
+    // First, get the expense details to check permissions and get transaction info
+    const expenseResult = await pool.query(
+      'SELECT e.*, g.id as group_id FROM expenses e JOIN `groups` g ON e.group_id = g.id WHERE e.id = ?',
+      [expenseId]
+    );
+
+    if (expenseResult.rows.length === 0) {
+      console.log('❌ Expense not found');
+      return res.status(404).json({ message: 'Expense not found' });
+    }
+
+    const expense = expenseResult.rows[0];
+    console.log('Expense found:', expense);
+
+    // Check if user is a member of the group
+    const memberCheck = await pool.query(
+      'SELECT id FROM group_members WHERE group_id = ? AND user_id = ?',
+      [expense.group_id, userId]
+    );
+
+    console.log('Member check result:', memberCheck.rows);
+
+    if (memberCheck.rows.length === 0) {
+      console.log('❌ User is not a member of this group');
+      return res.status(403).json({ message: 'You are not a member of this group' });
+    }
+
+    // Delete ALL expenses with the same transaction (description, paid_by, created_at, currency)
+    // This ensures we delete both positive and negative amounts
+    console.log('Deleting expense transaction...');
+    const deleteResult = await pool.query(
+      `DELETE FROM expenses 
+       WHERE description = ? 
+         AND paid_by = ? 
+         AND created_at = ? 
+         AND currency = ?
+         AND group_id = ?`,
+      [expense.description, expense.paid_by, expense.created_at, expense.currency, expense.group_id]
+    );
+
+    console.log(`✅ Deleted ${deleteResult.affectedRows} expense records`);
+    
+    if (deleteResult.affectedRows === 0) {
+      console.log('❌ No expense was deleted');
+      return res.status(404).json({ message: 'Expense not found or already deleted' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Expense deleted successfully',
+      deletedRecords: deleteResult.affectedRows
+    });
+  } catch (error) {
+    console.error('❌ deleteExpense error:', error);
+    res.status(500).json({ message: 'Failed to delete expense' });
+  }
+};
+
 // Get detailed group information
 exports.getGroupDetails = async (req, res) => {
   console.log('🔵 getGroupDetails called - groupId:', req.params.groupId, 'userId:', req.user?.id);
@@ -389,6 +508,7 @@ exports.getGroupDetails = async (req, res) => {
         uniqueExpenses.set(expenseKey, {
           currency,
           symbol,
+          participantsCount: exp.participants_count || 1,
           amounts: [],
           userAmounts: {} // userId -> amount
         });
@@ -409,27 +529,28 @@ exports.getGroupDetails = async (req, res) => {
       console.log('Processing expense:', {
         amounts: expense.amounts,
         positiveAmounts,
-        negativeAmounts
+        negativeAmounts,
+        participantCount: expense.amounts.length
       });
       
       if (positiveAmounts.length > 0 && negativeAmounts.length > 0) {
         const totalDebt = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
         const totalCredit = negativeAmounts.reduce((sum, amt) => sum + Math.abs(amt), 0);
         
-        // Calculate total expense amount (what was actually spent)
-        // Total = what payer(s) paid = total credit + average share per participant
-        const participantCount = expense.amounts.length;
+        // Calculate the actual number of participants from the expense records
+        const actualParticipantsCount = expense.amounts.length;
         const avgShare = totalDebt / positiveAmounts.length;
         
         console.log('Calculation:', {
           totalDebt,
           totalCredit,
           avgShare,
-          participantCount
+          actualParticipantsCount
         });
         
+        console.log(`→ SHARED expense (${actualParticipantsCount} participants)! Adding avgShare to everyone.`);
+        
         // For each user in this expense, their share is avgShare
-        // (everyone pays equally in a shared expense)
         Object.entries(expense.userAmounts).forEach(([uid, amount]) => {
           if (!memberShares[uid]) {
             memberShares[uid] = {};
@@ -438,12 +559,8 @@ exports.getGroupDetails = async (req, res) => {
             memberShares[uid][expense.currency] = { total: 0, symbol: expense.symbol };
           }
           
-          // Everyone's share is the average
-          // (whether they paid or owe money, their personal expense is the same)
-          const userShare = avgShare;
-          
-          console.log(`User ${uid}: adding ${userShare} to their ${expense.currency} share`);
-          memberShares[uid][expense.currency].total += userShare;
+          memberShares[uid][expense.currency].total += avgShare;
+          console.log(`  User ${uid}: +${avgShare} ${expense.currency}`);
         });
       }
     });
