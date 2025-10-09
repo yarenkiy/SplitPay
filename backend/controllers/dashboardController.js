@@ -40,32 +40,32 @@ const getDashboardData = async (req, res) => {
     
     const groupsResult = await pool.query(groupsQuery, [userId, userId]);
     
-    // Get recent activities
+    // Get recent activities - Show unique transactions (not duplicates)
     const activitiesQuery = `
       SELECT 
-        e.id,
+        MIN(e.id) as id,
         e.description,
-        e.amount,
+        ABS(MIN(CASE WHEN e.amount < 0 THEN e.amount ELSE NULL END)) as total_amount,
         e.currency,
         e.currency_symbol,
         e.created_at,
+        e.paid_by,
+        u.name as paid_by_name,
         g.name as group_name,
         g.color as group_color,
-        CASE 
-          WHEN e.amount > 0 THEN 'debt'
-          WHEN e.amount < 0 THEN 'payment'
-          ELSE 'expense'
-        END as activity_type
+        COUNT(DISTINCT e.user_id) as participant_count
       FROM expenses e
       JOIN \`groups\` g ON e.group_id = g.id
-      WHERE e.user_id = ? OR e.group_id IN (
+      JOIN users u ON e.paid_by = u.id
+      WHERE e.group_id IN (
         SELECT group_id FROM group_members WHERE user_id = ?
       )
+      GROUP BY e.description, e.paid_by, e.created_at, e.currency, e.currency_symbol, g.name, g.color, u.name
       ORDER BY e.created_at DESC
       LIMIT 6
     `;
     
-    const activitiesResult = await pool.query(activitiesQuery, [userId, userId]);
+    const activitiesResult = await pool.query(activitiesQuery, [userId]);
     
     res.json({
       success: true,
@@ -85,11 +85,13 @@ const getDashboardData = async (req, res) => {
         })),
         activities: activitiesResult.rows.map(activity => ({
           id: activity.id,
-          type: activity.activity_type,
-          message: `${activity.description} - ${activity.currency_symbol || '₺'}${Math.abs(activity.amount)}`,
+          type: 'expense',
+          message: `${activity.description} - ${activity.currency_symbol || '₺'}${activity.total_amount || 0}`,
+          detail: `Paid by ${activity.paid_by_name}`,
+          participants: activity.participant_count,
           group: activity.group_name,
           time: formatTimeAgo(activity.created_at),
-          icon: getActivityIcon(activity.activity_type),
+          icon: 'receipt-outline',
           color: activity.group_color
         }))
       }
@@ -181,39 +183,41 @@ const getRecentActivities = async (req, res) => {
     
     const query = `
       SELECT 
-        e.id,
+        MIN(e.id) as id,
         e.description,
-        e.amount,
+        ABS(MIN(CASE WHEN e.amount < 0 THEN e.amount ELSE NULL END)) as total_amount,
         e.currency,
         e.currency_symbol,
         e.created_at,
+        e.paid_by,
+        u.name as paid_by_name,
         g.name as group_name,
         g.color as group_color,
-        CASE 
-          WHEN e.amount > 0 THEN 'debt'
-          WHEN e.amount < 0 THEN 'payment'
-          ELSE 'expense'
-        END as activity_type
+        COUNT(DISTINCT e.user_id) as participant_count
       FROM expenses e
       JOIN \`groups\` g ON e.group_id = g.id
-      WHERE e.user_id = ? OR e.group_id IN (
+      JOIN users u ON e.paid_by = u.id
+      WHERE e.group_id IN (
         SELECT group_id FROM group_members WHERE user_id = ?
       )
+      GROUP BY e.description, e.paid_by, e.created_at, e.currency, e.currency_symbol, g.name, g.color, u.name
       ORDER BY e.created_at DESC
       LIMIT 6
     `;
     
-    const result = await pool.query(query, [userId, userId]);
+    const result = await pool.query(query, [userId]);
     
     res.json({
       success: true,
       data: result.rows.map(activity => ({
         id: activity.id,
-        type: activity.activity_type,
-        message: `${activity.description} - ${activity.currency_symbol || '₺'}${Math.abs(activity.amount)}`,
+        type: 'expense',
+        message: `${activity.description} - ${activity.currency_symbol || '₺'}${activity.total_amount || 0}`,
+        detail: `Paid by ${activity.paid_by_name}`,
+        participants: activity.participant_count,
         group: activity.group_name,
         time: formatTimeAgo(activity.created_at),
-        icon: getActivityIcon(activity.activity_type),
+        icon: 'receipt-outline',
         color: activity.group_color
       }))
     });
@@ -229,17 +233,17 @@ const formatTimeAgo = (date) => {
   const activityDate = new Date(date);
   const diffInMinutes = Math.floor((now - activityDate) / (1000 * 60));
   
-  if (diffInMinutes < 1) return 'Az önce';
-  if (diffInMinutes < 60) return `${diffInMinutes} dakika önce`;
+  if (diffInMinutes < 1) return 'Just now';
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
   
   const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours} saat önce`;
+  if (diffInHours < 24) return `${diffInHours}h ago`;
   
   const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) return `${diffInDays} gün önce`;
+  if (diffInDays < 7) return `${diffInDays}d ago`;
   
   const diffInWeeks = Math.floor(diffInDays / 7);
-  return `${diffInWeeks} hafta önce`;
+  return `${diffInWeeks}w ago`;
 };
 
 // Helper function to get activity icon

@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Modal,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -21,6 +22,7 @@ export default function SummaryScreen() {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [groupDetails, setGroupDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [showAllExpensesModal, setShowAllExpensesModal] = useState(false);
   const { selectedGroupId, setSelectedGroupId } = useSelectedGroup();
 
   useFocusEffect(
@@ -343,26 +345,23 @@ export default function SummaryScreen() {
                 <Text style={styles.sectionTitle}>Recent Expenses</Text>
               </View>
               <View style={styles.card}>
-                {groupDetails.recentExpenses.map((expense, index) => (
+                {groupDetails.recentExpenses.slice(0, 5).map((expense, index) => (
                   <View key={expense.id} style={[
                     styles.expenseItem,
-                    index !== groupDetails.recentExpenses.length - 1 && styles.memberItemBorder
+                    index !== Math.min(4, groupDetails.recentExpenses.length - 1) && styles.memberItemBorder
                   ]}>
                     <View style={styles.expenseInfo}>
                       <Text style={styles.expenseDescription}>{expense.description}</Text>
                       <Text style={styles.expenseDetail}>
-                        Paid by {expense.paidByName} → {expense.userName}
+                        Paid by {expense.paidByName}
                       </Text>
                       <Text style={styles.expenseDate}>
-                        {new Date(expense.createdAt).toLocaleDateString()}
+                        {new Date(expense.createdAt).toLocaleDateString()} • {expense.participants} {expense.participants > 1 ? 'people' : 'person'}
                       </Text>
                     </View>
                     <View style={styles.expenseActions}>
-                      <Text style={[
-                        styles.expenseAmount,
-                        { color: expense.amount > 0 ? '#ef4444' : '#10b981' }
-                      ]}>
-                        {expense.amount > 0 ? '+' : ''}{expense.currencySymbol || '₺'}{Math.abs(expense.amount).toLocaleString()}
+                      <Text style={styles.expenseAmount}>
+                        {expense.currencySymbol || '₺'}{Math.abs(expense.amount).toLocaleString()}
                       </Text>
                       <TouchableOpacity 
                         style={styles.deleteExpenseButton}
@@ -373,6 +372,15 @@ export default function SummaryScreen() {
                     </View>
                   </View>
                 ))}
+                {groupDetails.recentExpenses.length > 5 && (
+                  <TouchableOpacity 
+                    style={styles.seeAllButton}
+                    onPress={() => setShowAllExpensesModal(true)}
+                  >
+                    <Text style={styles.seeAllText}>See all {groupDetails.recentExpenses.length} expenses</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#667eea" />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}
@@ -382,7 +390,68 @@ export default function SummaryScreen() {
     );
   };
 
-  return selectedGroup ? renderGroupDetails() : renderGroupsList();
+  // Render all expenses modal
+  const renderAllExpensesModal = () => (
+    <Modal
+      visible={showAllExpensesModal}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowAllExpensesModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>All Expenses</Text>
+            <TouchableOpacity onPress={() => setShowAllExpensesModal(false)}>
+              <Ionicons name="close" size={28} color="#64748b" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            {groupDetails && groupDetails.recentExpenses.map((expense, index) => (
+              <View key={expense.id} style={[
+                styles.expenseItem,
+                index !== groupDetails.recentExpenses.length - 1 && styles.memberItemBorder
+              ]}>
+                <View style={styles.expenseInfo}>
+                  <Text style={styles.expenseDescription}>{expense.description}</Text>
+                  <Text style={styles.expenseDetail}>
+                    Paid by {expense.paidByName}
+                  </Text>
+                  <Text style={styles.expenseDate}>
+                    {new Date(expense.createdAt).toLocaleDateString()} • {expense.participants} {expense.participants > 1 ? 'people' : 'person'}
+                  </Text>
+                </View>
+                <View style={styles.expenseActions}>
+                  <Text style={styles.expenseAmount}>
+                    {expense.currencySymbol || '₺'}{Math.abs(expense.amount).toLocaleString()}
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.deleteExpenseButton}
+                    onPress={() => {
+                      handleDeleteExpense(expense.id);
+                      // If this was the last expense in modal, close it
+                      if (groupDetails.recentExpenses.length <= 1) {
+                        setShowAllExpensesModal(false);
+                      }
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  return (
+    <>
+      {selectedGroup ? renderGroupDetails() : renderGroupsList()}
+      {renderAllExpensesModal()}
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -731,6 +800,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     marginBottom: 4,
+    color: '#667eea',
   },
   deleteExpenseButton: {
     backgroundColor: '#fef2f2',
@@ -738,5 +808,52 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#fecaca',
+  },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#667eea',
+    marginRight: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1e293b',
+  },
+  modalContent: {
+    padding: 20,
   },
 });

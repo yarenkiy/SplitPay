@@ -462,7 +462,7 @@ exports.getGroupDetails = async (req, res) => {
       [groupId, groupId]
     );
 
-    // Get all expenses for this group
+    // Get all expenses for this group (for calculation)
     const expensesResult = await pool.query(
       `SELECT 
         e.id,
@@ -484,7 +484,27 @@ exports.getGroupDetails = async (req, res) => {
     );
     
     console.log('📊 Expenses found:', expensesResult.rows.length);
-    console.log('Expenses data:', JSON.stringify(expensesResult.rows, null, 2));
+    
+    // Get unique recent expenses for display (no duplicates)
+    const recentExpensesResult = await pool.query(
+      `SELECT 
+        MIN(e.id) as id,
+        e.description,
+        ABS(MIN(CASE WHEN e.amount < 0 THEN e.amount ELSE NULL END)) as amount,
+        e.created_at,
+        e.paid_by,
+        e.currency,
+        e.currency_symbol,
+        u.name as paid_by_name,
+        COUNT(DISTINCT e.user_id) as participant_count
+      FROM expenses e
+      JOIN users u ON e.paid_by = u.id
+      WHERE e.group_id = ?
+      GROUP BY e.description, e.paid_by, e.created_at, e.currency, e.currency_symbol, u.name
+      ORDER BY e.created_at DESC
+      LIMIT 10`,
+      [groupId]
+    );
 
     // Calculate my expenses and total expenses by currency
     const myExpensesByCurrency = {};
@@ -674,12 +694,12 @@ exports.getGroupDetails = async (req, res) => {
           expensesByCurrency
         },
         balances: balanceMatrix,
-        recentExpenses: expensesResult.rows.slice(0, 10).map(exp => ({
+        recentExpenses: recentExpensesResult.rows.map(exp => ({
           id: exp.id,
           description: exp.description,
           amount: parseFloat(exp.amount),
-          userName: exp.user_name,
           paidByName: exp.paid_by_name,
+          participants: exp.participant_count,
           createdAt: exp.created_at,
           currency: exp.currency || 'TRY',
           currencySymbol: exp.currency_symbol || '₺'

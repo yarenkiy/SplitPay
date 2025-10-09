@@ -220,6 +220,7 @@ export default function DashboardScreen() {
       </View>
       <View style={styles.activityContent}>
         <Text style={styles.activityMessage}>{activity.message}</Text>
+        {activity.detail && <Text style={styles.activityDetail}>{activity.detail}</Text>}
         <Text style={styles.activityGroup}>{activity.group}</Text>
       </View>
       <View style={styles.activityActions}>
@@ -518,7 +519,8 @@ const styles = StyleSheet.create({
   },
   activityIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   activityContent: { flex: 1 },
-  activityMessage: { fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 4, letterSpacing: -0.2 },
+  activityMessage: { fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 2, letterSpacing: -0.2 },
+  activityDetail: { fontSize: 12, color: '#667eea', fontWeight: '500', marginBottom: 2 },
   activityGroup: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
   activityActions: { alignItems: 'flex-end', justifyContent: 'space-between', height: 44 },
   activityTime: { fontSize: 11, color: '#9CA3AF', fontWeight: '600', marginBottom: 4 },
