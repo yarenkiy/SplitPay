@@ -1,8 +1,16 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useContext, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import {
+    getResponsiveBorderRadius,
+    getResponsiveMargin,
+    getResponsivePadding,
+    isSmallDevice,
+    isTablet,
+    scaleFontSize
+} from '../utils/responsive';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -53,12 +61,17 @@ export default function RegisterScreen() {
         style={styles.centerWrapper}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>LetSPLIT</Text>
-          <Text style={styles.tagline}>Join the community</Text>
-        </View>
-        
-        <View style={styles.card}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.logoContainer}>
+            <Text style={styles.logoText}>LetSPLIT</Text>
+            <Text style={styles.tagline}>Join the community</Text>
+          </View>
+          
+          <View style={styles.card}>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join LetSPLIT to start splitting expenses</Text>
           
@@ -120,7 +133,8 @@ export default function RegisterScreen() {
               Already have an account? <Text style={styles.loginLink}>Sign In</Text>
             </Text>
           </TouchableOpacity>
-        </View>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
   );
@@ -132,34 +146,38 @@ const styles = StyleSheet.create({
   },
   centerWrapper: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(20),
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: getResponsiveMargin(isSmallDevice ? 30 : 40),
   },
   logoText: {
-    fontSize: 36,
+    fontSize: scaleFontSize(isSmallDevice ? 32 : isTablet ? 44 : 36),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: getResponsiveMargin(8),
     letterSpacing: 1,
   },
   tagline: {
-    fontSize: 16,
+    fontSize: scaleFontSize(isSmallDevice ? 14 : 16),
     color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 24,
-    paddingVertical: 40,
-    paddingHorizontal: 32,
+    borderRadius: getResponsiveBorderRadius(24),
+    paddingVertical: getResponsivePadding(isSmallDevice ? 30 : 40),
+    paddingHorizontal: getResponsivePadding(isSmallDevice ? 24 : 32),
     alignItems: 'center',
     width: '100%',
-    maxWidth: 400,
+    maxWidth: isTablet ? 500 : 400,
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 20,
@@ -167,55 +185,55 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   title: {
-    fontSize: 28,
+    fontSize: scaleFontSize(isSmallDevice ? 24 : 28),
     fontWeight: 'bold',
     color: '#1F2937',
-    marginBottom: 8,
+    marginBottom: getResponsiveMargin(8),
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: scaleFontSize(isSmallDevice ? 14 : 16),
     color: '#6B7280',
-    marginBottom: 32,
+    marginBottom: getResponsiveMargin(isSmallDevice ? 24 : 32),
     textAlign: 'center',
   },
   inputContainer: {
     width: '100%',
-    marginBottom: 20,
+    marginBottom: getResponsiveMargin(isSmallDevice ? 16 : 20),
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: scaleFontSize(14),
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 8,
+    marginBottom: getResponsiveMargin(8),
   },
   input: {
     width: '100%',
     backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    fontSize: 16,
+    borderRadius: getResponsiveBorderRadius(12),
+    paddingVertical: getResponsivePadding(isSmallDevice ? 14 : 16),
+    paddingHorizontal: getResponsivePadding(20),
+    fontSize: scaleFontSize(16),
     color: '#1F2937',
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   button: {
     width: '100%',
-    marginTop: 8,
-    marginBottom: 24,
-    borderRadius: 12,
+    marginTop: getResponsiveMargin(8),
+    marginBottom: getResponsiveMargin(isSmallDevice ? 20 : 24),
+    borderRadius: getResponsiveBorderRadius(12),
     overflow: 'hidden',
   },
   buttonGradient: {
-    paddingVertical: 16,
+    paddingVertical: getResponsivePadding(isSmallDevice ? 14 : 16),
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 18,
+    fontSize: scaleFontSize(18),
     letterSpacing: 0.5,
   },
   buttonDisabled: {
@@ -226,7 +244,7 @@ const styles = StyleSheet.create({
   },
   loginText: {
     color: '#6B7280',
-    fontSize: 16,
+    fontSize: scaleFontSize(isSmallDevice ? 14 : 16),
     textAlign: 'center',
   },
   loginLink: {

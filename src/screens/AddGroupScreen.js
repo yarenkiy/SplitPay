@@ -14,6 +14,15 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import {
+    getGridColumns,
+    getResponsiveBorderRadius,
+    getResponsiveMargin,
+    getResponsivePadding,
+    isSmallDevice,
+    isTablet,
+    scaleFontSize
+} from '../utils/responsive';
 
 export default function AddGroupScreen() {
   const router = useRouter();
@@ -244,15 +253,18 @@ export default function AddGroupScreen() {
   );
 }
 
+const gridColumns = getGridColumns(70, 12);
+const typeCardWidth = `${(100 - (gridColumns - 1) * 3) / gridColumns}%`;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
   },
   headerGradient: {
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+    paddingTop: getResponsivePadding(50),
+    paddingBottom: getResponsivePadding(20),
+    paddingHorizontal: getResponsivePadding(20),
   },
   header: {
     flexDirection: 'row',
@@ -260,15 +272,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: isSmallDevice ? 36 : 40,
+    height: isSmallDevice ? 36 : 40,
+    borderRadius: getResponsiveBorderRadius(12),
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: scaleFontSize(isSmallDevice ? 20 : isTablet ? 26 : 22),
     fontWeight: '800',
     color: '#fff',
   },
@@ -276,32 +288,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    padding: getResponsivePadding(20),
   },
   section: {
-    marginBottom: 24,
+    marginBottom: getResponsiveMargin(isSmallDevice ? 20 : 24),
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 8,
+    marginBottom: getResponsiveMargin(12),
+    gap: getResponsiveMargin(8),
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: scaleFontSize(isSmallDevice ? 15 : 16),
     fontWeight: '700',
     color: '#1e293b',
   },
   typeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: getResponsiveMargin(isSmallDevice ? 8 : 12),
   },
   typeCard: {
-    width: '22%',
+    width: typeCardWidth,
     aspectRatio: 1,
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: getResponsiveBorderRadius(16),
     borderWidth: 2,
     borderColor: '#e2e8f0',
     alignItems: 'center',
@@ -319,11 +331,11 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   typeEmoji: {
-    fontSize: 28,
-    marginBottom: 4,
+    fontSize: scaleFontSize(isSmallDevice ? 24 : isTablet ? 32 : 28),
+    marginBottom: getResponsiveMargin(4),
   },
   typeLabel: {
-    fontSize: 11,
+    fontSize: scaleFontSize(isSmallDevice ? 10 : 11),
     fontWeight: '600',
     color: '#64748b',
   },
@@ -331,42 +343,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: getResponsiveBorderRadius(16),
     borderWidth: 2,
     borderColor: '#e2e8f0',
-    paddingHorizontal: 16,
-    paddingVertical: 4,
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(4),
   },
   emojiPrefix: {
-    fontSize: 24,
-    marginRight: 12,
+    fontSize: scaleFontSize(24),
+    marginRight: getResponsiveMargin(12),
   },
   input: {
     flex: 1,
-    fontSize: 16,
+    fontSize: scaleFontSize(16),
     color: '#1e293b',
-    paddingVertical: 14,
+    paddingVertical: getResponsivePadding(14),
     fontWeight: '500',
   },
   textArea: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: getResponsiveBorderRadius(16),
     borderWidth: 2,
     borderColor: '#e2e8f0',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(14),
     textAlignVertical: 'top',
-    minHeight: 100,
+    minHeight: isSmallDevice ? 80 : 100,
+    fontSize: scaleFontSize(16),
+    color: '#1e293b',
+    fontWeight: '500',
   },
   colorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: getResponsiveMargin(12),
   },
   colorOption: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
+    width: isSmallDevice ? 44 : isTablet ? 60 : 50,
+    height: isSmallDevice ? 44 : isTablet ? 60 : 50,
+    borderRadius: getResponsiveBorderRadius(16),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -385,29 +400,29 @@ const styles = StyleSheet.create({
   infoBox: {
     flexDirection: 'row',
     backgroundColor: '#e0f2fe',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    gap: 12,
+    borderRadius: getResponsiveBorderRadius(16),
+    padding: getResponsivePadding(16),
+    marginBottom: getResponsiveMargin(24),
+    gap: getResponsiveMargin(12),
   },
   infoContent: {
     flex: 1,
   },
   infoTitle: {
-    fontSize: 14,
+    fontSize: scaleFontSize(14),
     fontWeight: '700',
     color: '#0369a1',
-    marginBottom: 4,
+    marginBottom: getResponsiveMargin(4),
   },
   infoText: {
-    fontSize: 13,
+    fontSize: scaleFontSize(13),
     color: '#075985',
-    lineHeight: 18,
+    lineHeight: scaleFontSize(18),
   },
   createButton: {
-    borderRadius: 16,
+    borderRadius: getResponsiveBorderRadius(16),
     overflow: 'hidden',
-    marginBottom: 20,
+    marginBottom: getResponsiveMargin(20),
     shadowColor: '#667eea',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -421,10 +436,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
+    paddingVertical: getResponsivePadding(isSmallDevice ? 16 : 18),
   },
   createButtonText: {
-    fontSize: 18,
+    fontSize: scaleFontSize(18),
     fontWeight: '800',
     color: '#fff',
   },

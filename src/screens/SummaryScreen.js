@@ -15,6 +15,13 @@ import {
 } from 'react-native';
 import { useSelectedGroup } from '../context/SelectedGroupContext';
 import { dashboardAPI, groupAPI } from '../services/api';
+import {
+    getResponsiveMargin,
+    getResponsivePadding,
+    isSmallDevice,
+    isTablet,
+    scaleFontSize
+} from '../utils/responsive';
 
 export default function SummaryScreen() {
   const [isLoading, setIsLoading] = useState(true);
@@ -460,33 +467,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   headerGradient: {
-    paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 24,
+    paddingTop: getResponsivePadding(isSmallDevice ? 50 : 60),
+    paddingBottom: getResponsivePadding(30),
+    paddingHorizontal: getResponsivePadding(24),
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: scaleFontSize(isSmallDevice ? 28 : isTablet ? 40 : 32),
     fontWeight: '800',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: getResponsiveMargin(8),
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: scaleFontSize(isSmallDevice ? 14 : 16),
     color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '500',
   },
   content: {
-    padding: 20,
+    padding: getResponsivePadding(20),
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: getResponsivePadding(60),
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
+    marginTop: getResponsiveMargin(16),
+    fontSize: scaleFontSize(16),
     color: '#64748b',
     fontWeight: '600',
   },

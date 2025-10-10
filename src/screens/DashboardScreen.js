@@ -21,6 +21,15 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import { useSelectedGroup } from '../context/SelectedGroupContext';
 import { dashboardAPI, groupAPI } from '../services/api';
+import {
+  getCardWidth,
+  getResponsiveBorderRadius,
+  getResponsiveMargin,
+  getResponsivePadding,
+  isSmallDevice,
+  isTablet,
+  scaleFontSize
+} from '../utils/responsive';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -387,53 +396,73 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 16, fontSize: 16, color: '#667eea', fontWeight: '600' },
+  loadingText: { 
+    marginTop: getResponsiveMargin(16), 
+    fontSize: scaleFontSize(16), 
+    color: '#667eea', 
+    fontWeight: '600' 
+  },
   headerGradient: { 
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    paddingTop: 12,
+    paddingHorizontal: getResponsivePadding(24),
+    paddingBottom: getResponsivePadding(24),
+    paddingTop: getResponsivePadding(12),
   },
   headerContent: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'flex-start',
-    paddingTop: 8,
+    paddingTop: getResponsivePadding(8),
   },
   headerTextContainer: {
     flex: 1,
   },
   appName: {
-    fontSize: 32,
+    fontSize: scaleFontSize(isSmallDevice ? 28 : isTablet ? 40 : 32),
     fontWeight: '800',
     color: 'white',
-    marginBottom: 6,
+    marginBottom: getResponsiveMargin(6),
     letterSpacing: -1,
   },
   greetingText: {
-    fontSize: 16,
+    fontSize: scaleFontSize(isSmallDevice ? 14 : 16),
     color: 'white',
     opacity: 0.95,
     fontWeight: '500',
   },
   logoutButton: { 
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: isSmallDevice ? 36 : 40,
+    height: isSmallDevice ? 36 : 40,
+    borderRadius: isSmallDevice ? 18 : 20,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
+    marginTop: getResponsiveMargin(4),
   },
   content: { flex: 1 },
-  sectionTitle: { fontSize: 20, fontWeight: '700', color: '#1F2937', marginTop: 20, marginBottom: 14, letterSpacing: -0.5, paddingHorizontal: 20 },
-  quickActionsSection: { marginTop: 20, paddingHorizontal: 20 },
-  quickActionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+  sectionTitle: { 
+    fontSize: scaleFontSize(isSmallDevice ? 18 : 20), 
+    fontWeight: '700', 
+    color: '#1F2937', 
+    marginTop: getResponsiveMargin(20), 
+    marginBottom: getResponsiveMargin(14), 
+    letterSpacing: -0.5, 
+    paddingHorizontal: getResponsivePadding(20) 
+  },
+  quickActionsSection: { 
+    marginTop: getResponsiveMargin(20), 
+    paddingHorizontal: getResponsivePadding(20) 
+  },
+  quickActionsGrid: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    gap: getResponsiveMargin(isSmallDevice ? 10 : 14) 
+  },
   quickAction: {
     backgroundColor: 'white',
-    borderRadius: 18,
-    padding: 18,
+    borderRadius: getResponsiveBorderRadius(18),
+    padding: getResponsivePadding(isSmallDevice ? 14 : 18),
     alignItems: 'center',
-    width: '47%',
+    width: isTablet ? '23%' : '47%',
     shadowColor: '#7A5FD8',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
@@ -443,24 +472,30 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(192, 111, 187, 0.1)',
   },
   quickActionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: isSmallDevice ? 46 : isTablet ? 60 : 52,
+    height: isSmallDevice ? 46 : isTablet ? 60 : 52,
+    borderRadius: getResponsiveBorderRadius(16),
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: getResponsiveMargin(10),
   },
-  quickActionText: { fontSize: 13, fontWeight: '700', color: '#374151', textAlign: 'center', letterSpacing: -0.3 },
-  groupsSection: { marginTop: 8 },
+  quickActionText: { 
+    fontSize: scaleFontSize(isSmallDevice ? 12 : 13), 
+    fontWeight: '700', 
+    color: '#374151', 
+    textAlign: 'center', 
+    letterSpacing: -0.3 
+  },
+  groupsSection: { marginTop: getResponsiveMargin(8) },
   groupsScrollContent: { 
-    paddingHorizontal: 20,
-    gap: 14,
+    paddingHorizontal: getResponsivePadding(20),
+    gap: getResponsiveMargin(14),
   },
   groupCard: {
     backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 18,
-    width: 280,
+    borderRadius: getResponsiveBorderRadius(20),
+    padding: getResponsivePadding(isSmallDevice ? 16 : 18),
+    width: getCardWidth(isTablet ? 2.5 : 1.3),
     shadowColor: '#FF6B9D',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
@@ -469,46 +504,82 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 107, 157, 0.08)',
   },
-  groupHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  groupColor: { width: 14, height: 14, borderRadius: 7, marginRight: 14 },
+  groupHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: getResponsiveMargin(12) 
+  },
+  groupColor: { 
+    width: isSmallDevice ? 12 : 14, 
+    height: isSmallDevice ? 12 : 14, 
+    borderRadius: isSmallDevice ? 6 : 7, 
+    marginRight: getResponsiveMargin(14) 
+  },
   groupInfo: { flex: 1 },
-  groupName: { fontSize: 17, fontWeight: '700', color: '#1F2937', marginBottom: 4, letterSpacing: -0.3 },
-  groupMembers: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
+  groupName: { 
+    fontSize: scaleFontSize(isSmallDevice ? 15 : 17), 
+    fontWeight: '700', 
+    color: '#1F2937', 
+    marginBottom: getResponsiveMargin(4), 
+    letterSpacing: -0.3 
+  },
+  groupMembers: { 
+    fontSize: scaleFontSize(isSmallDevice ? 12 : 13), 
+    color: '#6B7280', 
+    fontWeight: '500' 
+  },
   groupBalance: { alignItems: 'flex-end' },
-  groupBalanceText: { fontSize: 17, fontWeight: '800', letterSpacing: -0.5 },
+  groupBalanceText: { 
+    fontSize: scaleFontSize(17), 
+    fontWeight: '800', 
+    letterSpacing: -0.5 
+  },
   groupFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 12,
+    paddingTop: getResponsivePadding(12),
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
-    marginTop: 8,
+    marginTop: getResponsiveMargin(8),
   },
   inviteCodeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8fafc',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
+    paddingHorizontal: getResponsivePadding(10),
+    paddingVertical: getResponsivePadding(6),
+    borderRadius: getResponsiveBorderRadius(8),
+    gap: getResponsiveMargin(6),
   },
-  inviteCodeLabel: { fontSize: 12, color: '#64748b', fontWeight: '600' },
-  inviteCode: { fontSize: 13, fontWeight: '800', color: '#667eea', letterSpacing: 1 },
+  inviteCodeLabel: { 
+    fontSize: scaleFontSize(12), 
+    color: '#64748b', 
+    fontWeight: '600' 
+  },
+  inviteCode: { 
+    fontSize: scaleFontSize(13), 
+    fontWeight: '800', 
+    color: '#667eea', 
+    letterSpacing: 1 
+  },
   copyButton: {
     backgroundColor: '#e9e7fd',
-    padding: 8,
-    borderRadius: 8,
+    padding: getResponsivePadding(8),
+    borderRadius: getResponsiveBorderRadius(8),
   },
-  activitiesSection: { marginTop: 12, marginBottom: 24, paddingHorizontal: 20 },
+  activitiesSection: { 
+    marginTop: getResponsiveMargin(12), 
+    marginBottom: getResponsiveMargin(24), 
+    paddingHorizontal: getResponsivePadding(20) 
+  },
   activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: getResponsiveBorderRadius(16),
+    padding: getResponsivePadding(isSmallDevice ? 14 : 16),
+    marginBottom: getResponsiveMargin(12),
     shadowColor: '#7A5FD8',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -517,53 +588,103 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(122, 95, 216, 0.06)',
   },
-  activityIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  activityIcon: { 
+    width: isSmallDevice ? 40 : 44, 
+    height: isSmallDevice ? 40 : 44, 
+    borderRadius: getResponsiveBorderRadius(14), 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginRight: getResponsiveMargin(14) 
+  },
   activityContent: { flex: 1 },
-  activityMessage: { fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 2, letterSpacing: -0.2 },
-  activityDetail: { fontSize: 12, color: '#667eea', fontWeight: '500', marginBottom: 2 },
-  activityGroup: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
-  activityActions: { alignItems: 'flex-end', justifyContent: 'space-between', height: 44 },
-  activityTime: { fontSize: 11, color: '#9CA3AF', fontWeight: '600', marginBottom: 4 },
+  activityMessage: { 
+    fontSize: scaleFontSize(isSmallDevice ? 13 : 14), 
+    fontWeight: '600', 
+    color: '#1F2937', 
+    marginBottom: getResponsiveMargin(2), 
+    letterSpacing: -0.2 
+  },
+  activityDetail: { 
+    fontSize: scaleFontSize(12), 
+    color: '#667eea', 
+    fontWeight: '500', 
+    marginBottom: getResponsiveMargin(2) 
+  },
+  activityGroup: { 
+    fontSize: scaleFontSize(12), 
+    color: '#6B7280', 
+    fontWeight: '500' 
+  },
+  activityActions: { 
+    alignItems: 'flex-end', 
+    justifyContent: 'space-between', 
+    height: isSmallDevice ? 40 : 44 
+  },
+  activityTime: { 
+    fontSize: scaleFontSize(11), 
+    color: '#9CA3AF', 
+    fontWeight: '600', 
+    marginBottom: getResponsiveMargin(4) 
+  },
   deleteButton: {
     backgroundColor: '#fef2f2',
-    padding: 6,
-    borderRadius: 8,
+    padding: getResponsivePadding(6),
+    borderRadius: getResponsiveBorderRadius(8),
     borderWidth: 1,
     borderColor: '#fecaca',
   },
   // Modal styles
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
   modalContent: { 
     backgroundColor: 'white', 
-    borderRadius: 24, 
-    padding: 28, 
-    width: '85%',
+    borderRadius: getResponsiveBorderRadius(24), 
+    padding: getResponsivePadding(isSmallDevice ? 24 : 28), 
+    width: isTablet ? '60%' : '85%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 10,
   },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle: { fontSize: 24, fontWeight: '800', color: '#1F2937' },
-  modalDescription: { fontSize: 15, color: '#64748b', marginBottom: 24, lineHeight: 22 },
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: getResponsiveMargin(16) 
+  },
+  modalTitle: { 
+    fontSize: scaleFontSize(isSmallDevice ? 20 : 24), 
+    fontWeight: '800', 
+    color: '#1F2937' 
+  },
+  modalDescription: { 
+    fontSize: scaleFontSize(15), 
+    color: '#64748b', 
+    marginBottom: getResponsiveMargin(24), 
+    lineHeight: scaleFontSize(22) 
+  },
   codeInput: {
     borderWidth: 2,
     borderColor: '#667eea',
-    borderRadius: 16,
-    padding: 18,
-    fontSize: 20,
+    borderRadius: getResponsiveBorderRadius(16),
+    padding: getResponsivePadding(18),
+    fontSize: scaleFontSize(20),
     fontWeight: '700',
     letterSpacing: 4,
     textAlign: 'center',
     color: '#1F2937',
-    marginBottom: 24,
+    marginBottom: getResponsiveMargin(24),
     backgroundColor: '#f8fafc',
   },
   joinButton: {
     backgroundColor: '#667eea',
-    borderRadius: 16,
-    padding: 18,
+    borderRadius: getResponsiveBorderRadius(16),
+    padding: getResponsivePadding(18),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -574,5 +695,9 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   joinButtonDisabled: { backgroundColor: '#94a3b8', opacity: 0.7 },
-  joinButtonText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  joinButtonText: { 
+    fontSize: scaleFontSize(16), 
+    fontWeight: '700', 
+    color: '#fff' 
+  },
 });

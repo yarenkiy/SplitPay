@@ -14,6 +14,12 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import {
+    getResponsiveMargin,
+    getResponsivePadding,
+    isSmallDevice,
+    scaleFontSize
+} from '../utils/responsive';
 
 const CURRENCIES = [
   { code: 'TRY', symbol: '₺', name: 'Turkish Lira' },
@@ -615,23 +621,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: scaleFontSize(16),
     color: '#6B7280',
-    marginTop: 12,
+    marginTop: getResponsiveMargin(12),
   },
   headerGradient: {
-    paddingBottom: 24,
+    paddingBottom: getResponsivePadding(24),
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingTop: getResponsivePadding(12),
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: isSmallDevice ? 36 : 40,
+    height: isSmallDevice ? 36 : 40,
+    borderRadius: isSmallDevice ? 18 : 20,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -641,47 +647,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: scaleFontSize(isSmallDevice ? 20 : 24),
     fontWeight: '800',
     color: 'white',
     letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: scaleFontSize(14),
     color: 'rgba(255, 255, 255, 0.9)',
-    marginTop: 2,
+    marginTop: getResponsiveMargin(2),
   },
   headerSpacer: {
-    width: 40,
+    width: isSmallDevice ? 36 : 40,
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: getResponsivePadding(100),
   },
   section: {
-    padding: 20,
+    padding: getResponsivePadding(isSmallDevice ? 16 : 20),
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: getResponsiveMargin(16),
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: scaleFontSize(isSmallDevice ? 16 : 18),
     fontWeight: '700',
     color: '#1F2937',
-    marginLeft: 10,
+    marginLeft: getResponsiveMargin(10),
     flex: 1,
   },
   sectionSubtitle: {
-    fontSize: 14,
+    fontSize: scaleFontSize(14),
     color: '#6B7280',
-    marginBottom: 12,
+    marginBottom: getResponsiveMargin(12),
   },
   optionalLabel: {
-    fontSize: 12,
+    fontSize: scaleFontSize(12),
     color: '#9CA3AF',
     fontStyle: 'italic',
   },

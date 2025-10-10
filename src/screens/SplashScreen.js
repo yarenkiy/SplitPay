@@ -3,6 +3,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { Animated, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
+import {
+    getResponsiveBorderRadius,
+    getResponsiveMargin,
+    getResponsivePadding,
+    hp,
+    isSmallDevice,
+    isTablet,
+    scaleFontSize
+} from '../utils/responsive';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -127,16 +136,16 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: getResponsivePadding(40),
     zIndex: 10,
   },
   logoContainer: {
-    marginBottom: 32,
+    marginBottom: getResponsiveMargin(isSmallDevice ? 24 : 32),
   },
   logoCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: isSmallDevice ? 100 : isTablet ? 150 : 120,
+    height: isSmallDevice ? 100 : isTablet ? 150 : 120,
+    borderRadius: isSmallDevice ? 50 : isTablet ? 75 : 60,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -149,13 +158,13 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   logoEmoji: {
-    fontSize: 56,
+    fontSize: scaleFontSize(isSmallDevice ? 48 : isTablet ? 70 : 56),
   },
   appName: {
-    fontSize: 48,
+    fontSize: scaleFontSize(isSmallDevice ? 40 : isTablet ? 60 : 48),
     fontWeight: '900',
     color: 'white',
-    marginBottom: 24,
+    marginBottom: getResponsiveMargin(isSmallDevice ? 20 : 24),
     letterSpacing: -2,
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
@@ -163,65 +172,66 @@ const styles = StyleSheet.create({
     textShadowRadius: 10,
   },
   taglineContainer: {
-    marginBottom: 16,
+    marginBottom: getResponsiveMargin(16),
   },
   tagline: {
-    fontSize: 24,
+    fontSize: scaleFontSize(isSmallDevice ? 20 : isTablet ? 28 : 24),
     fontWeight: '700',
     color: 'white',
     textAlign: 'center',
-    lineHeight: 32,
+    lineHeight: scaleFontSize(isSmallDevice ? 28 : 32),
     opacity: 0.95,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: scaleFontSize(isSmallDevice ? 14 : 16),
     color: 'rgba(255, 255, 255, 0.85)',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: scaleFontSize(isSmallDevice ? 20 : 24),
     fontWeight: '500',
-    marginTop: 12,
+    marginTop: getResponsiveMargin(12),
+    paddingHorizontal: getResponsivePadding(20),
   },
   tapHint: {
-    marginTop: 60,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginTop: getResponsiveMargin(isSmallDevice ? 50 : 60),
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(10),
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 20,
+    borderRadius: getResponsiveBorderRadius(20),
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   tapHintText: {
-    fontSize: 14,
+    fontSize: scaleFontSize(14),
     color: 'white',
     fontWeight: '600',
     letterSpacing: 0.5,
   },
-  // Decorative circles
+  // Decorative circles - responsive sizing
   decorativeCircle1: {
     position: 'absolute',
-    top: -100,
+    top: hp(-10),
     right: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
+    width: isSmallDevice ? 250 : 300,
+    height: isSmallDevice ? 250 : 300,
+    borderRadius: isSmallDevice ? 125 : 150,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   decorativeCircle2: {
     position: 'absolute',
-    bottom: -150,
+    bottom: hp(-15),
     left: -150,
-    width: 400,
-    height: 400,
-    borderRadius: 200,
+    width: isSmallDevice ? 350 : 400,
+    height: isSmallDevice ? 350 : 400,
+    borderRadius: isSmallDevice ? 175 : 200,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   decorativeCircle3: {
     position: 'absolute',
     top: '40%',
     right: -80,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: isSmallDevice ? 150 : 200,
+    height: isSmallDevice ? 150 : 200,
+    borderRadius: isSmallDevice ? 75 : 100,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
 });
