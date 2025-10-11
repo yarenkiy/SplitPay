@@ -120,37 +120,53 @@ exports.addExpense = async (req, res) => {
     const payerIsParticipant = participantIds.some(id => parseInt(id) === paidById);
     const participantsCount = participantIds.length;
 
-    // Create expense records for participants
-    for (const participantId of participantIds) {
-      const memberId = parseInt(participantId);
-      const shareAmount = parseFloat(memberAmounts[memberId] || 0);
-      
-      if (shareAmount <= 0) continue;
+    // Check if this is a loan (only one participant and payer is not participant)
+    const isLoan = split_type === 'loan' || (participantIds.length === 1 && !payerIsParticipant);
 
-      // If this member paid, they get negative (credit/alacak)
-      // If this member didn't pay, they get positive (debt/borç)
-      let memberAmount;
+    if (isLoan) {
+      // Loan: Only create negative record for the payer (lender)
+      console.log('Creating LOAN expense:', description, 'Amount:', totalAmount);
       
-      if (memberId === paidById) {
-        // Payer who is also participant: credit = paid amount - their share
-        memberAmount = -(totalAmount - shareAmount);
-      } else {
-        // Others: debt = their share
-        memberAmount = shareAmount;
+      await pool.query(
+        'INSERT INTO expenses (group_id, user_id, paid_by, amount, description, currency, currency_symbol, participants_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [groupId, paidById, paidById, -totalAmount, description || null, expenseCurrency, expenseCurrencySymbol, 1]
+      );
+    } else {
+      // Shared expense: Create records for all participants
+      console.log('Creating SHARED expense:', description, 'Amount:', totalAmount, 'Participants:', participantIds.length);
+      
+      // Create expense records for participants
+      for (const participantId of participantIds) {
+        const memberId = parseInt(participantId);
+        const shareAmount = parseFloat(memberAmounts[memberId] || 0);
+        
+        if (shareAmount <= 0) continue;
+
+        // If this member paid, they get negative (credit/alacak)
+        // If this member didn't pay, they get positive (debt/borç)
+        let memberAmount;
+        
+        if (memberId === paidById) {
+          // Payer who is also participant: credit = paid amount - their share
+          memberAmount = -(totalAmount - shareAmount);
+        } else {
+          // Others: debt = their share
+          memberAmount = shareAmount;
+        }
+
+        await pool.query(
+          'INSERT INTO expenses (group_id, user_id, paid_by, amount, description, currency, currency_symbol, participants_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [groupId, memberId, paidById, memberAmount, description || null, expenseCurrency, expenseCurrencySymbol, participantsCount]
+        );
       }
 
-      await pool.query(
-        'INSERT INTO expenses (group_id, user_id, paid_by, amount, description, currency, currency_symbol, participants_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [groupId, memberId, paidById, memberAmount, description || null, expenseCurrency, expenseCurrencySymbol, participantsCount]
-      );
-    }
-
-    // If payer is NOT among participants, create a separate record for them
-    if (!payerIsParticipant) {
-      await pool.query(
-        'INSERT INTO expenses (group_id, user_id, paid_by, amount, description, currency, currency_symbol, participants_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [groupId, paidById, paidById, -totalAmount, description || null, expenseCurrency, expenseCurrencySymbol, participantsCount]
-      );
+      // If payer is NOT among participants, create a separate record for them
+      if (!payerIsParticipant) {
+        await pool.query(
+          'INSERT INTO expenses (group_id, user_id, paid_by, amount, description, currency, currency_symbol, participants_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [groupId, paidById, paidById, -totalAmount, description || null, expenseCurrency, expenseCurrencySymbol, participantsCount]
+        );
+      }
     }
 
     res.json({ message: 'Expense added successfully' });
@@ -462,6 +478,9 @@ exports.getGroupDetails = async (req, res) => {
       [groupId, groupId]
     );
 
+    // Convert members rows to array for later use
+    const members = membersResult.rows;
+
     // Get all expenses for this group (for calculation)
     const expensesResult = await pool.query(
       `SELECT 
@@ -518,7 +537,7 @@ exports.getGroupDetails = async (req, res) => {
       const amount = parseFloat(exp.amount);
       const currency = exp.currency || 'TRY';
       const symbol = exp.currency_symbol || '₺';
-      const userId = exp.user_id;
+      const uid = exp.user_id;
       
       // Create unique key for each expense transaction
       const expenseKey = `${exp.description}-${exp.paid_by}-${exp.created_at}-${currency}`;
@@ -528,59 +547,110 @@ exports.getGroupDetails = async (req, res) => {
         uniqueExpenses.set(expenseKey, {
           currency,
           symbol,
-          participantsCount: exp.participants_count || 1,
+          paidBy: exp.paid_by,
           amounts: [],
           userAmounts: {} // userId -> amount
         });
       }
       const expense = uniqueExpenses.get(expenseKey);
       expense.amounts.push(amount);
-      expense.userAmounts[userId] = amount;
+      expense.userAmounts[uid] = amount;
     });
     
     // Calculate each member's real expense (their share) for each transaction
     console.log('=== Starting expense calculation ===');
     console.log('uniqueExpenses count:', uniqueExpenses.size);
     
-    uniqueExpenses.forEach(expense => {
+    uniqueExpenses.forEach((expense, key) => {
       const positiveAmounts = expense.amounts.filter(amt => amt > 0);
       const negativeAmounts = expense.amounts.filter(amt => amt < 0);
+      const payerId = expense.paidBy;
       
-      console.log('Processing expense:', {
+      console.log('Processing expense:', key, {
         amounts: expense.amounts,
         positiveAmounts,
         negativeAmounts,
         participantCount: expense.amounts.length
       });
       
+      // Loan case: only negative records present (payer recorded, but payees may be missing)
+      if (positiveAmounts.length === 0 && negativeAmounts.length > 0) {
+        const loanAmount = Math.abs(negativeAmounts[0]); // Loan amount
+        console.log('→ LOAN detected (only negative amounts). Amount:', loanAmount);
+
+        // Try to infer borrower(s): any group members who are NOT the payer
+        const otherMembers = members.filter(m => Number(m.id) !== Number(payerId));
+
+        if (otherMembers.length === 1) {
+          const borrowerId = otherMembers[0].id;
+          if (!memberShares[borrowerId]) memberShares[borrowerId] = {};
+          if (!memberShares[borrowerId][expense.currency]) memberShares[borrowerId][expense.currency] = { total: 0, symbol: expense.symbol };
+          memberShares[borrowerId][expense.currency].total += loanAmount;
+          console.log(`  Assigned loan ${loanAmount} ${expense.currency} to user ${borrowerId}`);
+        } else if (otherMembers.length > 1) {
+          // Split loan among other members evenly
+          const split = loanAmount / otherMembers.length;
+          otherMembers.forEach(m => {
+            if (!memberShares[m.id]) memberShares[m.id] = {};
+            if (!memberShares[m.id][expense.currency]) memberShares[m.id][expense.currency] = { total: 0, symbol: expense.symbol };
+            memberShares[m.id][expense.currency].total += split;
+            console.log(`  Split loan ${split} ${expense.currency} to user ${m.id}`);
+          });
+        } else {
+          // No other members found: try to find any positive userAmounts (fallback)
+          Object.entries(expense.userAmounts).forEach(([uid, amount]) => {
+            if (amount > 0) {
+              if (!memberShares[uid]) memberShares[uid] = {};
+              if (!memberShares[uid][expense.currency]) memberShares[uid][expense.currency] = { total: 0, symbol: expense.symbol };
+              memberShares[uid][expense.currency].total += loanAmount;
+              console.log(`  Fallback assigned loan ${loanAmount} ${expense.currency} to user ${uid}`);
+            }
+          });
+        }
+        return;
+      }
+      
+      // Shared expense: both positive (debtors) and negative (payer) records exist
       if (positiveAmounts.length > 0 && negativeAmounts.length > 0) {
-        const totalDebt = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
-        const totalCredit = negativeAmounts.reduce((sum, amt) => sum + Math.abs(amt), 0);
+        // Correct total expense amount = sum of absolute values of ALL records in this transaction
+        const totalPositive = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
+        const totalNegativeAbs = negativeAmounts.reduce((sum, amt) => sum + Math.abs(amt), 0);
+        const totalExpenseAmount = totalPositive + totalNegativeAbs;
+        const totalParticipants = expense.amounts.length;
+        const avgShare = totalExpenseAmount / totalParticipants;
         
-        // Calculate the actual number of participants from the expense records
-        const actualParticipantsCount = expense.amounts.length;
-        const avgShare = totalDebt / positiveAmounts.length;
-        
-        console.log('Calculation:', {
-          totalDebt,
-          totalCredit,
-          avgShare,
-          actualParticipantsCount
+        console.log('→ SHARED EXPENSE detected!', {
+          totalPositive,
+          totalNegativeAbs,
+          totalExpenseAmount,
+          totalParticipants,
+          avgShare
         });
         
-        console.log(`→ SHARED expense (${actualParticipantsCount} participants)! Adding avgShare to everyone.`);
-        
-        // For each user in this expense, their share is avgShare
         Object.entries(expense.userAmounts).forEach(([uid, amount]) => {
-          if (!memberShares[uid]) {
-            memberShares[uid] = {};
+          const numericUid = Number(uid);
+          if (!memberShares[numericUid]) memberShares[numericUid] = {};
+          if (!memberShares[numericUid][expense.currency]) memberShares[numericUid][expense.currency] = { total: 0, symbol: expense.symbol };
+          memberShares[numericUid][expense.currency].total += avgShare;
+          console.log(`  User ${uid} (amount: ${amount}): share = +${avgShare} ${expense.currency}`);
+        });
+      }
+      
+      // Only positive amounts (no payer record) - edge case: treat as shared among those with positive amounts
+      if (positiveAmounts.length > 0 && negativeAmounts.length === 0) {
+        console.log('⚠️  WARNING: Only positive amounts found (no payer record). Treating as shared expense.');
+        const totalExpenseAmount = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
+        const participantsCount = positiveAmounts.length;
+        const avgShare = totalExpenseAmount / participantsCount;
+        
+        Object.entries(expense.userAmounts).forEach(([uid, amount]) => {
+          if (amount > 0) {
+            const numericUid = Number(uid);
+            if (!memberShares[numericUid]) memberShares[numericUid] = {};
+            if (!memberShares[numericUid][expense.currency]) memberShares[numericUid][expense.currency] = { total: 0, symbol: expense.symbol };
+            memberShares[numericUid][expense.currency].total += avgShare;
+            console.log(`  User ${uid}: share = +${avgShare} ${expense.currency}`);
           }
-          if (!memberShares[uid][expense.currency]) {
-            memberShares[uid][expense.currency] = { total: 0, symbol: expense.symbol };
-          }
-          
-          memberShares[uid][expense.currency].total += avgShare;
-          console.log(`  User ${uid}: +${avgShare} ${expense.currency}`);
         });
       }
     });
@@ -619,54 +689,97 @@ exports.getGroupDetails = async (req, res) => {
     Object.values(incomesByCurrency).forEach(curr => totalIncome += curr.total);
     Object.values(expensesByCurrency).forEach(curr => totalExpenses += curr.total);
 
-    // Create balance matrix (who owes whom) by currency
+    // Create balance matrix (who owes whom) by currency using uniqueExpenses to avoid double-counting
     const balanceMatrix = [];
-    const members = membersResult.rows;
 
-    for (let i = 0; i < members.length; i++) {
-      for (let j = i + 1; j < members.length; j++) {
-        const member1 = members[i];
-        const member2 = members[j];
-        
-        // Calculate net balance between two members for each currency
-        const expensesBetween = expensesResult.rows.filter(exp => 
-          (exp.user_id === member1.id && exp.paid_by === member2.id) ||
-          (exp.user_id === member2.id && exp.paid_by === member1.id)
-        );
+    // Build pairwise balances using uniqueExpenses so we use the original transaction grouping
+    // key format: "fromId_toId_currency" -> { amount, symbol }
+    const pairBalances = {};
 
-        // Group by currency
-        const balancesByCurrency = {};
-        expensesBetween.forEach(exp => {
-          const currency = exp.currency || 'TRY';
-          const symbol = exp.currency_symbol || '₺';
-          
-          if (!balancesByCurrency[currency]) {
-            balancesByCurrency[currency] = { balance: 0, symbol };
-          }
-          
-          if (exp.paid_by === member1.id && exp.user_id === member2.id) {
-            balancesByCurrency[currency].balance += parseFloat(exp.amount);
-          } else if (exp.paid_by === member2.id && exp.user_id === member1.id) {
-            balancesByCurrency[currency].balance -= parseFloat(exp.amount);
-          }
-        });
+    uniqueExpenses.forEach((expense) => {
+      const currency = expense.currency || 'TRY';
+      const symbol = expense.symbol || '₺';
+      const paidBy = Number(expense.paidBy);
 
-        // Create balance entries for each currency
-        Object.entries(balancesByCurrency).forEach(([currency, data]) => {
-          const netBalance = data.balance;
-          if (Math.abs(netBalance) > 0.01) {
-            balanceMatrix.push({
-              from: netBalance > 0 ? member2.name : member1.name,
-              to: netBalance > 0 ? member1.name : member2.name,
-              amount: Math.abs(netBalance),
-              currency: currency,
-              currencySymbol: data.symbol
-            });
-          }
+      const positiveAmounts = expense.amounts.filter(a => a > 0);
+      const negativeAmounts = expense.amounts.filter(a => a < 0);
+
+      // Loan case (only negative records): assign loan amount to OTHER members
+      if (positiveAmounts.length === 0 && negativeAmounts.length > 0) {
+        const loanAmount = Math.abs(negativeAmounts[0]);
+        const otherMembers = members.filter(m => Number(m.id) !== paidBy);
+
+        if (otherMembers.length === 1) {
+          const borrowerId = otherMembers[0].id;
+          const key = `${borrowerId}_${paidBy}_${currency}`;
+          if (!pairBalances[key]) pairBalances[key] = { amount: 0, symbol };
+          pairBalances[key].amount += loanAmount;
+        } else if (otherMembers.length > 1) {
+          const split = loanAmount / otherMembers.length;
+          otherMembers.forEach(m => {
+            const key = `${m.id}_${paidBy}_${currency}`;
+            if (!pairBalances[key]) pairBalances[key] = { amount: 0, symbol };
+            pairBalances[key].amount += split;
+          });
+        } else {
+          // fallback: if we somehow have no other members, try positive userAmounts
+          Object.entries(expense.userAmounts).forEach(([uid, amt]) => {
+            if (amt > 0) {
+              const key = `${uid}_${paidBy}_${currency}`;
+              if (!pairBalances[key]) pairBalances[key] = { amount: 0, symbol };
+              pairBalances[key].amount += loanAmount;
+            }
+          });
+        }
+
+        return; // done with this transaction
+      }
+
+      // Shared expense: take positive userAmounts as "they owe paidBy"
+      Object.entries(expense.userAmounts).forEach(([uid, amt]) => {
+        const numericUid = Number(uid);
+        if (numericUid === paidBy) return; // skip payer
+        const owed = parseFloat(amt) > 0 ? parseFloat(amt) : 0;
+        if (owed <= 0) return;
+        const key = `${numericUid}_${paidBy}_${currency}`;
+        if (!pairBalances[key]) pairBalances[key] = { amount: 0, symbol };
+        pairBalances[key].amount += owed;
+      });
+    });
+
+    // Net pair balances (cancel out reverse directions) and build balanceMatrix
+    const processed = new Set();
+    Object.keys(pairBalances).forEach(key => {
+      if (processed.has(key)) return;
+      const [fromIdStr, toIdStr, currency] = key.split('_');
+      const reverseKey = `${toIdStr}_${fromIdStr}_${currency}`;
+
+      const forward = pairBalances[key]?.amount || 0;
+      const reverse = pairBalances[reverseKey]?.amount || 0;
+      const net = forward - reverse; // positive => fromId owes toId
+
+      if (Math.abs(net) > 0.009) {
+        const fromId = net > 0 ? fromIdStr : toIdStr;
+        const toId = net > 0 ? toIdStr : fromIdStr;
+        const amount = Math.round(Math.abs(net) * 100) / 100; // round to 2 decimals
+        const symbol = pairBalances[key]?.symbol || pairBalances[reverseKey]?.symbol || '₺';
+        const fromName = (members.find(m => String(m.id) === String(fromId)) || {}).name || `User ${fromId}`;
+        const toName = (members.find(m => String(m.id) === String(toId)) || {}).name || `User ${toId}`;
+
+        balanceMatrix.push({
+          from: fromName,
+          to: toName,
+          amount,
+          currency,
+          currencySymbol: symbol
         });
       }
-    }
 
+      processed.add(key);
+      processed.add(reverseKey);
+    });
+
+    // Continue with response
     res.json({
       success: true,
       data: {
