@@ -301,7 +301,7 @@ export default function AddExpenseScreen() {
           style={styles.amountInput}
           placeholder="0.00"
           placeholderTextColor="#D1D5DB"
-          keyboardType="numeric"
+          keyboardType="decimal-pad"
           value={amount}
           onChangeText={(text) => {
             // Allow numbers, comma, and dot
@@ -495,7 +495,7 @@ export default function AddExpenseScreen() {
                           style={styles.customAmountField}
                   placeholder="0.00"
                   placeholderTextColor="#9CA3AF"
-                          keyboardType="numeric"
+                          keyboardType="decimal-pad"
                           value={customAmounts[member.id] || ''}
                           onChangeText={(text) => {
                             // Allow numbers, comma, and dot
