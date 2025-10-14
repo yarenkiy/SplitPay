@@ -3,24 +3,24 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSelectedGroup } from '../context/SelectedGroupContext';
 import { dashboardAPI, groupAPI } from '../services/api';
 import {
-    getResponsiveMargin,
-    getResponsivePadding,
-    isSmallDevice,
-    isTablet,
-    scaleFontSize
+  getResponsiveMargin,
+  getResponsivePadding,
+  isSmallDevice,
+  isTablet,
+  scaleFontSize
 } from '../utils/responsive';
 
 export default function SummaryScreen() {
