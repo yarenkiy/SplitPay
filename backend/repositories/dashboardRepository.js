@@ -37,7 +37,8 @@ class DashboardRepository {
       SELECT 
         MIN(e.id) as id,
         e.description,
-        ABS(MIN(CASE WHEN e.amount < 0 THEN e.amount ELSE NULL END)) as total_amount,
+        ABS(SUM(CASE WHEN e.amount < 0 THEN e.amount ELSE 0 END)) as negative_sum,
+        SUM(CASE WHEN e.amount > 0 THEN e.amount ELSE 0 END) as positive_sum,
         e.currency,
         e.currency_symbol,
         e.created_at,

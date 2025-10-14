@@ -49,17 +49,35 @@ class DashboardService {
           color: group.color,
           inviteCode: group.invite_code
         })),
-        activities: activities.map(activity => ({
-          id: activity.id,
-          type: 'expense',
-          message: `${activity.description} - ${activity.currency_symbol || '₺'}${activity.total_amount || 0}`,
-          detail: `Paid by ${activity.paid_by_name}`,
-          participants: activity.participant_count,
-          group: activity.group_name,
-          time: this.formatTimeAgo(activity.created_at),
-          icon: 'receipt-outline',
-          color: activity.group_color
-        }))
+        activities: activities.map(activity => {
+          const positiveSum = parseFloat(activity.positive_sum || 0);
+          const negativeSumAbs = Math.abs(parseFloat(activity.negative_sum || 0));
+          const participants = parseInt(activity.participant_count || 0);
+
+          // Infer full total like GroupService
+          let total;
+          if (positiveSum > 0) {
+            if (participants > 1) {
+              total = (positiveSum * participants) / (participants - 1);
+            } else {
+              total = positiveSum;
+            }
+          } else {
+            total = negativeSumAbs;
+          }
+
+          return {
+            id: activity.id,
+            type: 'expense',
+            message: `${activity.description} - ${activity.currency_symbol || '₺'}${(total || 0)}`,
+            detail: `Paid by ${activity.paid_by_name}`,
+            participants: activity.participant_count,
+            group: activity.group_name,
+            time: this.formatTimeAgo(activity.created_at),
+            icon: 'receipt-outline',
+            color: activity.group_color
+          };
+        })
       }
     };
   }

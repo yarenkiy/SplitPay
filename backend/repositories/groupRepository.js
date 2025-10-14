@@ -158,6 +158,7 @@ class GroupRepository {
         e.created_at,
         e.user_id,
         e.paid_by,
+        e.participants_count,
         e.currency,
         e.currency_symbol,
         u1.name as user_name,
@@ -175,7 +176,7 @@ class GroupRepository {
       `SELECT 
         MIN(e.id) as id,
         e.description,
-        ABS(MIN(CASE WHEN e.amount < 0 THEN e.amount ELSE NULL END)) as amount,
+        ABS(SUM(CASE WHEN e.amount < 0 THEN e.amount ELSE 0 END)) as amount,
         e.created_at,
         e.paid_by,
         e.currency,
