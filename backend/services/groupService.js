@@ -289,7 +289,7 @@ class GroupService {
           paidBy: exp.paid_by,
           amounts: [],
           userAmounts: {},
-          participantsCount: Number(exp.participants_count) || undefined
+          participantsCount: undefined // Will be calculated from amounts array
         });
       }
       const expense = uniqueExpenses.get(expenseKey);
@@ -300,11 +300,18 @@ class GroupService {
       }
     });
 
+    // Calculate participants count from amounts array length
+    uniqueExpenses.forEach((expense) => {
+      expense.participantsCount = expense.amounts.length;
+    });
+
     console.log('\n📊 Unique Expenses Count:', uniqueExpenses.size);
+    console.log('📋 All Expense Keys:');
     uniqueExpenses.forEach((expense, key) => {
-      console.log(`\n  Expense: ${key.split('-')[0]}`);
+      console.log(`  Key: ${key}`);
       console.log(`    Amounts: [${expense.amounts.join(', ')}]`);
       console.log(`    User Amounts:`, expense.userAmounts);
+      console.log(`    Participants Count: ${expense.participantsCount}`);
     });
 
     // Calculate member shares
@@ -379,13 +386,85 @@ class GroupService {
     console.log('\n👥 Member Shares:', JSON.stringify(memberShares, null, 2));
     
     // Calculate logged-in user's expenses (their share)
+    const myShareByCurrency = {};
     if (memberShares[userId]) {
       Object.entries(memberShares[userId]).forEach(([currency, data]) => {
-        myExpensesByCurrency[currency] = data;
+        myShareByCurrency[currency] = data;
       });
     }
     
-    console.log('\n💰 My Expenses (User', userId, '):', myExpensesByCurrency);
+    // Calculate what the user actually PAID (their expenses)
+    uniqueExpenses.forEach((expense, key) => {
+      const paidBy = Number(expense.paidBy);
+      if (paidBy === userId) {
+        const currency = expense.currency || 'TRY';
+        const symbol = expense.symbol || '₺';
+        
+        // Calculate the actual total amount of this expense
+        const positiveAmounts = expense.amounts.filter(amt => amt > 0);
+        const negativeAmounts = expense.amounts.filter(amt => amt < 0);
+        
+        let expenseTotal = 0;
+        
+        if (positiveAmounts.length === 0 && negativeAmounts.length > 0) {
+          // Loan: Count as expense (amount that will be paid back)
+          expenseTotal = Math.abs(negativeAmounts[0]);
+        } else if (positiveAmounts.length > 0) {
+          // Shared expense: infer full total from positive shares
+          const sumPositives = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
+          const participants = expense.participantsCount || (negativeAmounts.length > 0 ? positiveAmounts.length + 1 : positiveAmounts.length);
+          if (negativeAmounts.length > 0 && participants > 1) {
+            // Payer is a participant -> positives exclude payer's own share
+            expenseTotal = (sumPositives * participants) / (participants - 1);
+          } else {
+            // Payer not a participant -> positives already sum to total
+            expenseTotal = sumPositives;
+          }
+        } else if (negativeAmounts.length > 0) {
+          // Fallback: use absolute sum of negative amounts
+          expenseTotal = Math.abs(negativeAmounts.reduce((sum, amt) => sum + amt, 0));
+        }
+        
+        if (!myExpensesByCurrency[currency]) {
+          myExpensesByCurrency[currency] = { total: 0, symbol };
+        }
+        myExpensesByCurrency[currency].total += expenseTotal;
+      }
+    });
+    
+    console.log('\n💰 My Paid Expenses (User', userId, '):', myExpensesByCurrency);
+    uniqueExpenses.forEach((expense, key) => {
+      const paidBy = Number(expense.paidBy);
+      if (paidBy === userId) {
+        const currency = expense.currency || 'TRY';
+        const positiveAmounts = expense.amounts.filter(amt => amt > 0);
+        const negativeAmounts = expense.amounts.filter(amt => amt < 0);
+        
+        let expenseTotal = 0;
+        let calculationType = '';
+        
+        if (positiveAmounts.length === 0 && negativeAmounts.length > 0) {
+          expenseTotal = Math.abs(negativeAmounts[0]);
+          calculationType = 'LOAN';
+        } else if (positiveAmounts.length > 0) {
+          const sumPositives = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
+          const participants = expense.participantsCount || (negativeAmounts.length > 0 ? positiveAmounts.length + 1 : positiveAmounts.length);
+          if (negativeAmounts.length > 0 && participants > 1) {
+            expenseTotal = (sumPositives * participants) / (participants - 1);
+          } else {
+            expenseTotal = sumPositives;
+          }
+          calculationType = 'SHARED EXPENSE';
+        } else if (negativeAmounts.length > 0) {
+          expenseTotal = Math.abs(negativeAmounts.reduce((sum, amt) => sum + amt, 0));
+          calculationType = 'FALLBACK';
+        }
+        
+        console.log(`  ${key.split('-')[0]} (${calculationType}): ${expenseTotal} ${currency}`);
+      }
+    });
+    
+    console.log('\n💳 My Share (User', userId, '):', myShareByCurrency);
     
     // Calculate Total Expenses (each expense counted once, INCLUDING loans)
     // NOTE: Both LOANS and SHARED expenses count towards total expenses!
@@ -435,7 +514,7 @@ class GroupService {
     
     console.log('\n💵 Total Expenses by Currency:', totalExpensesByCurrency);
 
-    const incomesByCurrency = myExpensesByCurrency;
+    const incomesByCurrency = myShareByCurrency;
     const expensesByCurrency = totalExpensesByCurrency;
 
     let totalIncome = 0;
@@ -444,9 +523,8 @@ class GroupService {
     Object.values(expensesByCurrency).forEach(curr => totalExpenses += curr.total);
     
     console.log('\n📈 FINAL SUMMARY:');
-    console.log('  Total Income (My Share):', totalIncome);
-    console.log('  Total Expenses (Group):', totalExpenses);
-    console.log('  Net Balance:', totalIncome - totalExpenses);
+    console.log('  My Share (My portion):', totalIncome);
+    console.log('  Total Group Expenses:', totalExpenses);
     console.log('=== END DEBUG ===\n');
 
     // Create balance matrix
@@ -554,51 +632,57 @@ class GroupService {
           totalExpenses,
           netBalance: totalIncome - totalExpenses,
           memberCount: members.length,
-          expenseCount: expenses.length,
+          expenseCount: uniqueExpenses.size,
           incomesByCurrency,
           expensesByCurrency
         },
         balances: balanceMatrix,
-        recentExpenses: recentExpenses.map(exp => {
-          // Find the corresponding unique expense to get the correct total amount
-          const expenseKey = `${exp.description}-${exp.paid_by}-${exp.created_at}-${exp.currency || 'TRY'}`;
-          const uniqueExpense = uniqueExpenses.get(expenseKey);
+        recentExpenses: Array.from(uniqueExpenses.entries()).map(([key, expense]) => {
+          // Calculate the correct total amount for this expense
+          const positiveAmounts = expense.amounts.filter(amt => amt > 0);
+          const negativeAmounts = expense.amounts.filter(amt => amt < 0);
           
-          let correctAmount = parseFloat(exp.amount);
+          let correctAmount = 0;
           let isLoan = false;
           
-          if (uniqueExpense) {
-            const positiveAmounts = uniqueExpense.amounts.filter(amt => amt > 0);
-            const negativeAmounts = uniqueExpense.amounts.filter(amt => amt < 0);
-            
-            if (positiveAmounts.length === 0 && negativeAmounts.length > 0) {
-              // Loan
-              correctAmount = Math.abs(negativeAmounts[0]);
-              isLoan = true;
-            } else if (positiveAmounts.length > 0) {
-              // Shared expense: infer full total from positive shares
-              const sumPositives = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
-              const participants = uniqueExpense.participantsCount || (negativeAmounts.length > 0 ? positiveAmounts.length + 1 : positiveAmounts.length);
-              if (negativeAmounts.length > 0 && participants > 1) {
-                correctAmount = (sumPositives * participants) / (participants - 1);
-              } else {
-                correctAmount = sumPositives;
-              }
+          if (positiveAmounts.length === 0 && negativeAmounts.length > 0) {
+            // Loan: Count as expense (amount that will be paid back)
+            correctAmount = Math.abs(negativeAmounts[0]);
+            isLoan = true;
+          } else if (positiveAmounts.length > 0) {
+            // Shared expense: infer full total from positive shares
+            const sumPositives = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
+            const participants = expense.participantsCount || (negativeAmounts.length > 0 ? positiveAmounts.length + 1 : positiveAmounts.length);
+            if (negativeAmounts.length > 0 && participants > 1) {
+              // Payer is a participant -> positives exclude payer's own share
+              correctAmount = (sumPositives * participants) / (participants - 1);
+            } else {
+              // Payer not a participant -> positives already sum to total
+              correctAmount = sumPositives;
             }
+          } else if (negativeAmounts.length > 0) {
+            // Fallback: use absolute sum of negative amounts
+            correctAmount = Math.abs(negativeAmounts.reduce((sum, amt) => sum + amt, 0));
           }
           
+          // Get the first expense record for this unique expense to get metadata
+          const firstExpenseRecord = expenses.find(exp => {
+            const expenseKey = `${exp.description}-${exp.paid_by}-${exp.created_at}-${exp.currency || 'TRY'}`;
+            return expenseKey === key;
+          });
+          
           return {
-            id: exp.id,
-            description: exp.description,
+            id: firstExpenseRecord?.id || key,
+            description: key.split('-')[0],
             amount: correctAmount,
-            paidByName: exp.paid_by_name,
-            participants: exp.participant_count,
-            createdAt: exp.created_at,
-            currency: exp.currency || 'TRY',
-            currencySymbol: exp.currency_symbol || '₺',
+            paidByName: firstExpenseRecord?.paid_by_name || 'Unknown',
+            participants: expense.participantsCount || 1,
+            createdAt: firstExpenseRecord?.created_at || new Date().toISOString(),
+            currency: expense.currency || 'TRY',
+            currencySymbol: expense.symbol || '₺',
             isLoan
           };
-        })
+        }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) // Sort by date, newest first
       }
     };
   }
