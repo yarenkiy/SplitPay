@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import CurrencyConverter from '../../components/CurrencyConverter';
 import { useSelectedGroup } from '../context/SelectedGroupContext';
 import { dashboardAPI, groupAPI } from '../services/api';
 import {
@@ -30,6 +31,7 @@ export default function SummaryScreen() {
   const [groupDetails, setGroupDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [showAllExpensesModal, setShowAllExpensesModal] = useState(false);
+  const [showCurrencyConverter, setShowCurrencyConverter] = useState(false);
   const { selectedGroupId, setSelectedGroupId } = useSelectedGroup();
 
   useFocusEffect(
@@ -148,8 +150,18 @@ export default function SummaryScreen() {
         colors={['#667eea', '#764ba2']}
         style={styles.headerGradient}
       >
-        <Text style={styles.headerTitle}>My Groups</Text>
-        <Text style={styles.headerSubtitle}>Select a group to view details</Text>
+        <View style={styles.groupsHeaderContent}>
+          <View style={styles.groupsHeaderText}>
+            <Text style={styles.headerTitle}>My Groups</Text>
+            <Text style={styles.headerSubtitle}>Select a group to view details</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.currencyConverterButtonHeader} 
+            onPress={() => setShowCurrencyConverter(true)}
+          >
+            <Ionicons name="swap-horizontal" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
 
       <View style={styles.content}>
@@ -212,7 +224,12 @@ export default function SummaryScreen() {
                   <Text style={styles.detailsHeaderSubtitle}>{groupDetails.group.description}</Text>
                 )}
               </View>
-              <View style={{ width: 40 }} />
+              <TouchableOpacity 
+                style={styles.currencyConverterButton} 
+                onPress={() => setShowCurrencyConverter(true)}
+              >
+                <Ionicons name="swap-horizontal" size={20} color="#fff" />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.inviteCodeBox}>
@@ -417,6 +434,10 @@ export default function SummaryScreen() {
     <>
       {selectedGroup ? renderGroupDetails() : renderGroupsList()}
       {renderAllExpensesModal()}
+      <CurrencyConverter
+        visible={showCurrencyConverter}
+        onClose={() => setShowCurrencyConverter(false)}
+      />
     </>
   );
 }
@@ -835,5 +856,30 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     padding: 20,
+  },
+  groupsHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  groupsHeaderText: {
+    flex: 1,
+  },
+  currencyConverterButtonHeader: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: getResponsiveMargin(16),
+  },
+  currencyConverterButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import CurrencyConverter from '../../components/CurrencyConverter';
 import { AuthContext } from '../context/AuthContext';
 import { useSelectedGroup } from '../context/SelectedGroupContext';
 import { dashboardAPI, groupAPI } from '../services/api';
@@ -51,6 +52,7 @@ export default function DashboardScreen() {
   const [joinModalVisible, setJoinModalVisible] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
+  const [showCurrencyConverter, setShowCurrencyConverter] = useState(false);
 
   // Ekran her göründüğünde verileri yenile
   useFocusEffect(
@@ -305,6 +307,7 @@ export default function DashboardScreen() {
           />
         }
       >
+        
         {/* Groups - Horizontal Scroll */}
         <View style={styles.groupsSection}>
           <Text style={styles.sectionTitle}>Your Groups</Text>
@@ -325,6 +328,17 @@ export default function DashboardScreen() {
             {renderQuickAction('New Group', 'people', '#F472B6', () => navigateToTab('Yeni Grup'))}
             {renderQuickAction('Join Group', 'enter', '#4ECDC4', () => setJoinModalVisible(true))}
             {renderQuickAction('Notes', 'list', '#10B981', () => router.push('/notes'))}
+          </View>
+          <View style={styles.currencyActionContainer}>
+            <TouchableOpacity 
+              style={styles.currencyQuickAction} 
+              onPress={() => setShowCurrencyConverter(true)}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#667eea' }]}>
+                <Ionicons name="swap-horizontal" size={24} color="white" />
+              </View>
+              <Text style={styles.quickActionText}>Currency Converter</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -388,6 +402,12 @@ export default function DashboardScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Currency Converter Modal */}
+      <CurrencyConverter
+        visible={showCurrencyConverter}
+        onClose={() => setShowCurrencyConverter(false)}
+      />
     </View>
   );
 }
@@ -455,7 +475,8 @@ const styles = StyleSheet.create({
   quickActionsGrid: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
-    gap: getResponsiveMargin(isSmallDevice ? 10 : 14) 
+    gap: getResponsiveMargin(isSmallDevice ? 8 : 12),
+    marginBottom: getResponsiveMargin(12),
   },
   quickAction: {
     backgroundColor: 'white',
@@ -699,5 +720,78 @@ const styles = StyleSheet.create({
     fontSize: scaleFontSize(16), 
     fontWeight: '700', 
     color: '#fff' 
+  },
+  // Currency Converter Card styles
+  currencyConverterSection: {
+    marginTop: getResponsiveMargin(16),
+    paddingHorizontal: getResponsivePadding(20),
+  },
+  currencyConverterCard: {
+    backgroundColor: 'white',
+    borderRadius: getResponsiveBorderRadius(16),
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  currencyConverterContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: getResponsivePadding(16),
+    justifyContent: 'space-between',
+  },
+  currencyConverterLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  currencyConverterIcon: {
+    width: isSmallDevice ? 36 : 40,
+    height: isSmallDevice ? 36 : 40,
+    borderRadius: getResponsiveBorderRadius(12),
+    backgroundColor: '#f0f9ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: getResponsiveMargin(12),
+    borderWidth: 1,
+    borderColor: '#e0f2fe',
+  },
+  currencyConverterText: {
+    flex: 1,
+  },
+  currencyConverterTitle: {
+    fontSize: scaleFontSize(isSmallDevice ? 14 : 15),
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: getResponsiveMargin(2),
+    letterSpacing: -0.2,
+  },
+  currencyConverterSubtitle: {
+    fontSize: scaleFontSize(isSmallDevice ? 11 : 12),
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  currencyConverterRight: {
+    paddingLeft: getResponsivePadding(8),
+  },
+  currencyActionContainer: {
+    marginTop: getResponsiveMargin(8),
+  },
+  currencyQuickAction: {
+    backgroundColor: 'white',
+    borderRadius: getResponsiveBorderRadius(18),
+    padding: getResponsivePadding(isSmallDevice ? 14 : 18),
+    alignItems: 'center',
+    width: '100%',
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#e0f2fe',
   },
 });
