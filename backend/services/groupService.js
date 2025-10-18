@@ -11,6 +11,16 @@ class GroupService {
     return code;
   }
 
+  // Parse amount string that can contain comma or dot as decimal separator
+  parseAmount(amountStr) {
+    if (typeof amountStr === 'number') return amountStr;
+    if (typeof amountStr !== 'string') return 0;
+    
+    // Replace comma with dot for consistent parsing
+    const normalized = amountStr.replace(',', '.');
+    return parseFloat(normalized) || 0;
+  }
+
   async createGroup(name, description, color, members, userId) {
     // Generate unique invite code
     let inviteCode;
@@ -57,7 +67,7 @@ class GroupService {
     }
 
     const paidById = paidBy || userId;
-    const totalAmount = parseFloat(amount);
+    const totalAmount = this.parseAmount(amount);
 
     // Determine which members to split between
     let participantIds = participants;
@@ -75,7 +85,11 @@ class GroupService {
     let memberAmounts = {};
     
     if (splitType === 'custom' && customAmounts) {
-      memberAmounts = customAmounts;
+      // Parse custom amounts to handle comma/dot decimal separators
+      memberAmounts = {};
+      Object.entries(customAmounts).forEach(([memberId, amount]) => {
+        memberAmounts[memberId] = this.parseAmount(amount);
+      });
     } else {
       // Equal split
       const splitAmount = totalAmount / participantIds.length;
@@ -105,7 +119,7 @@ class GroupService {
       
       for (const participantId of participantIds) {
         const memberId = parseInt(participantId);
-        const shareAmount = parseFloat(memberAmounts[memberId] || 0);
+        const shareAmount = this.parseAmount(memberAmounts[memberId] || 0);
         
         if (shareAmount <= 0) continue;
 
@@ -275,7 +289,7 @@ class GroupService {
     const memberShares = {};
 
     expenses.forEach(exp => {
-      const amount = parseFloat(exp.amount);
+      const amount = this.parseAmount(exp.amount);
       const currency = exp.currency || 'TRY';
       const symbol = exp.currency_symbol || '₺';
       const uid = exp.user_id;
@@ -583,7 +597,7 @@ class GroupService {
       Object.entries(expense.userAmounts).forEach(([uid, amt]) => {
         const numericUid = Number(uid);
         if (numericUid === paidBy) return;
-        const owed = parseFloat(amt) > 0 ? parseFloat(amt) : 0;
+        const owed = this.parseAmount(amt) > 0 ? this.parseAmount(amt) : 0;
         if (owed <= 0) return;
         const key = `${numericUid}_${paidBy}_${currency}`;
         if (!pairBalances[key]) pairBalances[key] = { amount: 0, symbol };
@@ -638,7 +652,7 @@ class GroupService {
           id: m.id,
           name: m.name,
           email: m.email,
-          balance: parseFloat(m.balance)
+          balance: this.parseAmount(m.balance)
         })),
         summary: {
           totalExpenses,

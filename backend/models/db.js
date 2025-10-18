@@ -98,6 +98,24 @@ const initializeDatabase = async () => {
       )
     `);
 
+    // Password reset verification codes table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_codes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        verification_code VARCHAR(6) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        verified BOOLEAN DEFAULT FALSE,
+        used BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_password_reset_codes_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        INDEX idx_verification_code (verification_code),
+        INDEX idx_user_id (user_id),
+        INDEX idx_email (email)
+      )
+    `);
+
     // Migration: Add participants_count to existing expenses table if not exists
     try {
       await pool.query(`

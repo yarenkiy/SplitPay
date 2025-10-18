@@ -413,9 +413,7 @@ export default function AddExpenseScreen() {
           onChangeText={(text) => {
             // Allow numbers, comma, and dot
             const cleaned = text.replace(/[^0-9.,]/g, '');
-            // Replace comma with dot for consistency
-            const normalized = cleaned.replace(',', '.');
-            setAmount(normalized);
+            setAmount(cleaned);
           }}
         />
       </View>
@@ -607,11 +605,9 @@ export default function AddExpenseScreen() {
                           onChangeText={(text) => {
                             // Allow numbers, comma, and dot
                             const cleaned = text.replace(/[^0-9.,]/g, '');
-                            // Replace comma with dot for consistency
-                            const normalized = cleaned.replace(',', '.');
                             setCustomAmounts(prev => ({
                               ...prev,
-                              [member.id]: normalized
+                              [member.id]: cleaned
                             }));
                           }}
                 />

@@ -1,8 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { AuthContext } from '../context/AuthContext';
+import { authAPI } from '../services/api';
 import {
     getResponsiveBorderRadius,
     getResponsiveMargin,
@@ -12,43 +12,41 @@ import {
     scaleFontSize
 } from '../utils/responsive';
 
-export default function LoginScreen() {
+export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const { login } = useContext(AuthContext);
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter your email and password');
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address');
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
     setIsLoading(true);
     
     try {
-      console.log('Login attempt with:', { email, password });
-      const result = await login(email, password);
-      console.log('Login result:', result);
-      
-      if (result.success) {
-        console.log('Login successful, userToken should be set');
-        // Login successful - AuthContext will automatically redirect to dashboard
-        // No need to manually navigate as the AppNavigator will detect the userToken change
-      } else {
-        console.log('Login failed:', result.error);
-        // Login failed, show error message
-        Alert.alert('Login Failed', result.error || 'Invalid email or password');
-      }
+      const response = await authAPI.forgotPassword(email);
+      Alert.alert(
+        'Success', 
+        response.data.message || 'A verification code has been sent to your email address.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.push(`/verify-code?email=${encodeURIComponent(email)}`)
+          }
+        ]
+      );
     } catch (error) {
-      console.error('Login error:', error);
-      Alert.alert('Error', 'An error occurred during login: ' + error.message);
+      console.error('Forgot password error:', error);
+      Alert.alert('Error', 'An error occurred while sending password reset request. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -76,60 +74,47 @@ export default function LoginScreen() {
           </View>
           
           <View style={styles.card}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to your account</Text>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              placeholderTextColor="#9CA3AF"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor="#9CA3AF"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
-          
-          <TouchableOpacity 
-            style={[styles.button, isLoading && styles.buttonDisabled]} 
-            onPress={handleLogin}
-            disabled={isLoading}
-          >
-            <LinearGradient
-              colors={isLoading ? ['#9CA3AF', '#9CA3AF'] : ['#667eea', '#764ba2']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.buttonGradient}
-            >
-              <Text style={styles.buttonText}>
-                {isLoading ? 'Signing in...' : 'Sign In'}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={() => router.push('/forgot-password')} style={styles.forgotPasswordContainer}>
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={() => router.push('/register')} style={styles.registerContainer}>
-            <Text style={styles.registerText}>
-              Don't have an account? <Text style={styles.registerLink}>Sign Up</Text>
+            <Text style={styles.title}>Forgot Password</Text>
+            <Text style={styles.subtitle}>
+              Enter your email address and we'll send you a password reset link
             </Text>
-          </TouchableOpacity>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email address"
+                placeholderTextColor="#9CA3AF"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+            
+            <TouchableOpacity 
+              style={[styles.button, isLoading && styles.buttonDisabled]} 
+              onPress={handleForgotPassword}
+              disabled={isLoading}
+            >
+              <LinearGradient
+                colors={isLoading ? ['#9CA3AF', '#9CA3AF'] : ['#667eea', '#764ba2']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.buttonGradient}
+              >
+                <Text style={styles.buttonText}>
+                  {isLoading ? 'Sending...' : 'Send Reset Link'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={() => router.back()} style={styles.backContainer}>
+              <Text style={styles.backText}>
+                Back to Login
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -193,6 +178,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: getResponsiveMargin(isSmallDevice ? 24 : 32),
     textAlign: 'center',
+    lineHeight: 22,
   },
   inputContainer: {
     width: '100%',
@@ -236,25 +222,12 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.7,
   },
-  forgotPasswordContainer: {
+  backContainer: {
     alignItems: 'center',
-    marginBottom: getResponsiveMargin(16),
   },
-  forgotPasswordText: {
+  backText: {
     color: '#667eea',
     fontSize: scaleFontSize(isSmallDevice ? 14 : 16),
     fontWeight: '600',
-  },
-  registerContainer: {
-    alignItems: 'center',
-  },
-  registerText: {
-    color: '#6B7280',
-    fontSize: scaleFontSize(isSmallDevice ? 14 : 16),
-    textAlign: 'center',
-  },
-  registerLink: {
-    color: '#667eea',
-    fontWeight: 'bold',
   },
 });

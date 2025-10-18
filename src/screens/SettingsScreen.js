@@ -2,30 +2,37 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useContext, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
-import { dashboardAPI, groupAPI } from '../services/api';
+import { authAPI, dashboardAPI, groupAPI } from '../services/api';
 import {
-  getResponsiveBorderRadius,
-  getResponsiveMargin,
-  getResponsivePadding,
-  isSmallDevice,
-  isTablet,
-  scaleFontSize
+    getResponsiveBorderRadius,
+    getResponsiveMargin,
+    getResponsivePadding,
+    isSmallDevice,
+    isTablet,
+    scaleFontSize
 } from '../utils/responsive';
 
 export default function SettingsScreen() {
   const { user, logout } = useContext(AuthContext);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
 
   // Fetch groups from database
   const fetchGroups = async () => {
@@ -96,6 +103,40 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert('Error', 'New password must be at least 6 characters long');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'New passwords do not match');
+      return;
+    }
+
+    setChangePasswordLoading(true);
+    
+    try {
+      const response = await authAPI.changePassword(currentPassword, newPassword);
+      Alert.alert('Success', response.data.message || 'Your password has been changed successfully.');
+      setShowChangePasswordModal(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.error('Change password error:', error);
+      const errorMessage = error.response?.data?.message || 'An error occurred while changing password.';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setChangePasswordLoading(false);
+    }
+  };
+
   const getInitials = (name) => {
     if (!name) return '?';
     return name
@@ -125,6 +166,14 @@ export default function SettingsScreen() {
               
               <Text style={[styles.label, styles.emailLabel]}>Email</Text>
               <Text style={styles.profileEmail}>{user?.email || 'user@example.com'}</Text>
+              
+              <TouchableOpacity 
+                style={styles.changePasswordButton}
+                onPress={() => setShowChangePasswordModal(true)}
+              >
+                <Ionicons name="lock-closed-outline" size={16} color="#6366F1" />
+                <Text style={styles.changePasswordText}>Change Password</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -180,6 +229,83 @@ export default function SettingsScreen() {
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Change Password Modal */}
+      <Modal
+        visible={showChangePasswordModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowChangePasswordModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Change Password</Text>
+            
+            <View style={styles.modalInputContainer}>
+              <Text style={styles.modalInputLabel}>Current Password</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Enter your current password"
+                placeholderTextColor="#9CA3AF"
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.modalInputContainer}>
+              <Text style={styles.modalInputLabel}>New Password</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Enter your new password"
+                placeholderTextColor="#9CA3AF"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.modalInputContainer}>
+              <Text style={styles.modalInputLabel}>Confirm Password</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Confirm your password"
+                placeholderTextColor="#9CA3AF"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowChangePasswordModal(false);
+                  setCurrentPassword('');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalSaveButton, changePasswordLoading && styles.modalSaveButtonDisabled]}
+                onPress={handleChangePassword}
+                disabled={changePasswordLoading}
+              >
+                <Text style={styles.modalSaveText}>
+                  {changePasswordLoading ? 'Changing...' : 'Change'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -356,5 +482,100 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#F44336',
     marginLeft: getResponsiveMargin(8),
+  },
+  changePasswordButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingVertical: getResponsivePadding(12),
+    paddingHorizontal: getResponsivePadding(20),
+    borderRadius: getResponsiveBorderRadius(8),
+    marginTop: getResponsiveMargin(20),
+  },
+  changePasswordText: {
+    fontSize: scaleFontSize(14),
+    fontWeight: '600',
+    color: '#6366F1',
+    marginLeft: getResponsiveMargin(6),
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getResponsivePadding(20),
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: getResponsiveBorderRadius(16),
+    padding: getResponsivePadding(24),
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: scaleFontSize(20),
+    fontWeight: 'bold',
+    color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: getResponsiveMargin(24),
+  },
+  modalInputContainer: {
+    marginBottom: getResponsiveMargin(16),
+  },
+  modalInputLabel: {
+    fontSize: scaleFontSize(14),
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: getResponsiveMargin(6),
+  },
+  modalInput: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: getResponsiveBorderRadius(8),
+    paddingVertical: getResponsivePadding(12),
+    paddingHorizontal: getResponsivePadding(16),
+    fontSize: scaleFontSize(16),
+    color: '#1F2937',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: getResponsiveMargin(24),
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: getResponsivePadding(12),
+    borderRadius: getResponsiveBorderRadius(8),
+    alignItems: 'center',
+    marginRight: getResponsiveMargin(8),
+  },
+  modalCancelText: {
+    fontSize: scaleFontSize(16),
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  modalSaveButton: {
+    flex: 1,
+    backgroundColor: '#6366F1',
+    paddingVertical: getResponsivePadding(12),
+    borderRadius: getResponsiveBorderRadius(8),
+    alignItems: 'center',
+    marginLeft: getResponsiveMargin(8),
+  },
+  modalSaveButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
+  modalSaveText: {
+    fontSize: scaleFontSize(16),
+    fontWeight: '600',
+    color: 'white',
   },
 }); 

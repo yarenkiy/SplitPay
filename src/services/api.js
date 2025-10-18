@@ -49,6 +49,10 @@ export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   register: (userData) => api.post('/auth/register', userData),
   logout: () => api.post('/auth/logout'),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  verifyResetCode: (email, verificationCode) => api.post('/auth/verify-reset-code', { email, verificationCode }),
+  resetPassword: (email, newPassword) => api.post('/auth/reset-password', { email, newPassword }),
+  changePassword: (currentPassword, newPassword) => api.post('/auth/change-password', { currentPassword, newPassword }),
 };
 
 export const groupAPI = {
