@@ -17,9 +17,10 @@ class GroupRepository {
 
     const groupId = groupInsert.rows.insertId || groupInsert.rows[0]?.id;
 
-    // Ensure groupId resolved for both mysql2 return shapes
     const resolvedGroupId = groupId || (() => {
-      const last = Array.isArray(groupInsert.rows) ? groupInsert.rows[groupInsert.rows.length - 1] : null;
+      const last = Array.isArray(groupInsert.rows)
+        ? groupInsert.rows[groupInsert.rows.length - 1]
+        : null;
       return last?.id;
     })();
 
@@ -27,7 +28,10 @@ class GroupRepository {
   }
 
   async addGroupMember(groupId, userId) {
-    await pool.query('INSERT INTO group_members (group_id, user_id) VALUES (?, ?)', [groupId, userId]);
+    await pool.query(
+      'INSERT INTO group_members (group_id, user_id) VALUES (?, ?)',
+      [groupId, userId]
+    );
   }
 
   async getGroupMembers(groupId) {
@@ -118,86 +122,119 @@ class GroupRepository {
     return result.affectedRows;
   }
 
-  async getGroupDetails(groupId) {
-    // Get group info
-    const groupResult = await pool.query(
-      'SELECT id, name, description, color, invite_code, created_at FROM `groups` WHERE id = ?',
-      [groupId]
-    );
+  // 🔥 Updated getGroupDetails with myExpenses and error handling
+  async getGroupDetails(groupId, userId) {
+    console.log('🟢 getGroupDetails called:', groupId, userId);
 
-    if (groupResult.rows.length === 0) {
-      return null;
+    try {
+      // Get group info
+      const groupResult = await pool.query(
+        'SELECT id, name, description, color, invite_code, created_at FROM `groups` WHERE id = ?',
+        [groupId]
+      );
+
+      if (!groupResult.rows || groupResult.rows.length === 0) {
+        console.log('⚠️ No group found for ID:', groupId);
+        return null;
+      }
+
+      const group = groupResult.rows[0];
+
+      // Get all members with balances
+      const membersResult = await pool.query(
+        `SELECT 
+          u.id,
+          u.name,
+          u.email,
+          COALESCE(SUM(e.amount), 0) as balance
+        FROM users u
+        JOIN group_members gm ON u.id = gm.user_id
+        LEFT JOIN expenses e ON u.id = e.user_id AND e.group_id = ?
+        WHERE gm.group_id = ?
+        GROUP BY u.id, u.name, u.email
+        ORDER BY u.name ASC`,
+        [groupId, groupId]
+      );
+
+      const members = membersResult.rows;
+
+      // Get all expenses
+      const expensesResult = await pool.query(
+        `SELECT 
+          e.id,
+          e.amount,
+          e.description,
+          e.created_at,
+          e.user_id,
+          e.paid_by,
+          e.participants_count,
+          e.currency,
+          e.currency_symbol,
+          u1.name as user_name,
+          u2.name as paid_by_name
+        FROM expenses e
+        JOIN users u1 ON e.user_id = u1.id
+        JOIN users u2 ON e.paid_by = u2.id
+        WHERE e.group_id = ?
+        ORDER BY e.created_at DESC`,
+        [groupId]
+      );
+
+      const expenses = expensesResult.rows;
+      const myExpensesByCurrency = {};
+      const memberShares = {};
+
+      // 💰 Pay calculation
+      for (const expense of expenses) {
+        const share = expense.amount / (expense.participants_count || 1);
+
+        // Her kullanıcı için payı tut
+        if (!memberShares[expense.user_id]) memberShares[expense.user_id] = {};
+        if (!memberShares[expense.user_id][expense.currency])
+          memberShares[expense.user_id][expense.currency] = 0;
+        memberShares[expense.user_id][expense.currency] += share;
+
+        // Şu anki kullanıcıya ait harcamalar
+        if (expense.user_id === Number(userId)) {
+          if (!myExpensesByCurrency[expense.currency])
+            myExpensesByCurrency[expense.currency] = 0;
+          myExpensesByCurrency[expense.currency] += share;
+        }
+      }
+
+      // Recent expenses
+      const recentExpensesResult = await pool.query(
+        `SELECT 
+          MIN(e.id) as id,
+          e.description,
+          ABS(SUM(CASE WHEN e.amount < 0 THEN e.amount ELSE 0 END)) as amount,
+          e.created_at,
+          e.paid_by,
+          e.currency,
+          e.currency_symbol,
+          u.name as paid_by_name,
+          COUNT(DISTINCT e.user_id) as participant_count
+        FROM expenses e
+        JOIN users u ON e.paid_by = u.id
+        WHERE e.group_id = ?
+        GROUP BY e.description, e.paid_by, e.created_at, e.currency, e.currency_symbol, u.name
+        ORDER BY e.created_at DESC
+        LIMIT 10`,
+        [groupId]
+      );
+
+      return {
+        group,
+        members,
+        expenses,
+        recentExpenses: recentExpensesResult.rows,
+        memberShares,
+        myExpensesByCurrency,
+      };
+    } catch (error) {
+      console.error('❌ getGroupDetails error:', error);
+      throw error;
     }
-
-    const group = groupResult.rows[0];
-
-    // Get all members with their balances
-    const membersResult = await pool.query(
-      `SELECT 
-        u.id,
-        u.name,
-        u.email,
-        COALESCE(SUM(e.amount), 0) as balance
-      FROM users u
-      JOIN group_members gm ON u.id = gm.user_id
-      LEFT JOIN expenses e ON u.id = e.user_id AND e.group_id = ?
-      WHERE gm.group_id = ?
-      GROUP BY u.id, u.name, u.email
-      ORDER BY u.name ASC`,
-      [groupId, groupId]
-    );
-
-    const members = membersResult.rows;
-
-    // Get all expenses for this group
-    const expensesResult = await pool.query(
-      `SELECT 
-        e.id,
-        e.amount,
-        e.description,
-        e.created_at,
-        e.user_id,
-        e.paid_by,
-        e.participants_count,
-        e.currency,
-        e.currency_symbol,
-        u1.name as user_name,
-        u2.name as paid_by_name
-      FROM expenses e
-      JOIN users u1 ON e.user_id = u1.id
-      JOIN users u2 ON e.paid_by = u2.id
-      WHERE e.group_id = ?
-      ORDER BY e.created_at DESC`,
-      [groupId]
-    );
-
-    // Get unique recent expenses for display
-    const recentExpensesResult = await pool.query(
-      `SELECT 
-        MIN(e.id) as id,
-        e.description,
-        ABS(SUM(CASE WHEN e.amount < 0 THEN e.amount ELSE 0 END)) as amount,
-        e.created_at,
-        e.paid_by,
-        e.currency,
-        e.currency_symbol,
-        u.name as paid_by_name,
-        COUNT(DISTINCT e.user_id) as participant_count
-      FROM expenses e
-      JOIN users u ON e.paid_by = u.id
-      WHERE e.group_id = ?
-      GROUP BY e.description, e.paid_by, e.created_at, e.currency, e.currency_symbol, u.name
-      ORDER BY e.created_at DESC
-      LIMIT 10`,
-      [groupId]
-    );
-
-    return {
-      group,
-      members,
-      expenses: expensesResult.rows,
-      recentExpenses: recentExpensesResult.rows
-    };
   }
 
   async getAllExpenseGroups() {
@@ -216,17 +253,19 @@ class GroupRepository {
   }
 
   async updateParticipantsCount(participantCount, description, paidBy, createdAt, currency) {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       UPDATE expenses 
       SET participants_count = ?
       WHERE description = ? 
         AND paid_by = ? 
         AND created_at = ? 
         AND currency = ?
-    `, [participantCount, description, paidBy, createdAt, currency]);
+    `,
+      [participantCount, description, paidBy, createdAt, currency]
+    );
     return result.affectedRows;
   }
 }
 
 module.exports = new GroupRepository();
-

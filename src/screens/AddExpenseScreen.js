@@ -22,10 +22,81 @@ import {
 } from '../utils/responsive';
 
 const CURRENCIES = [
+  // Major Currencies
   { code: 'TRY', symbol: '₺', name: 'Turkish Lira' },
   { code: 'USD', symbol: '$', name: 'US Dollar' },
   { code: 'EUR', symbol: '€', name: 'Euro' },
   { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+  { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc' },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+  { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar' },
+  
+  // European Currencies
+  { code: 'SEK', symbol: 'kr', name: 'Swedish Krona' },
+  { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone' },
+  { code: 'DKK', symbol: 'kr', name: 'Danish Krone' },
+  { code: 'PLN', symbol: 'zł', name: 'Polish Zloty' },
+  { code: 'CZK', symbol: 'Kč', name: 'Czech Koruna' },
+  { code: 'HUF', symbol: 'Ft', name: 'Hungarian Forint' },
+  { code: 'RON', symbol: 'lei', name: 'Romanian Leu' },
+  { code: 'BGN', symbol: 'лв', name: 'Bulgarian Lev' },
+  { code: 'HRK', symbol: 'kn', name: 'Croatian Kuna' },
+  
+  // Asian Currencies
+  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
+  { code: 'KRW', symbol: '₩', name: 'South Korean Won' },
+  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
+  { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar' },
+  { code: 'TWD', symbol: 'NT$', name: 'Taiwan Dollar' },
+  { code: 'THB', symbol: '฿', name: 'Thai Baht' },
+  { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit' },
+  { code: 'IDR', symbol: 'Rp', name: 'Indonesian Rupiah' },
+  { code: 'PHP', symbol: '₱', name: 'Philippine Peso' },
+  { code: 'VND', symbol: '₫', name: 'Vietnamese Dong' },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+  { code: 'PKR', symbol: '₨', name: 'Pakistani Rupee' },
+  { code: 'BDT', symbol: '৳', name: 'Bangladeshi Taka' },
+  { code: 'LKR', symbol: '₨', name: 'Sri Lankan Rupee' },
+  
+  // Middle East & Africa
+  { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham' },
+  { code: 'SAR', symbol: '﷼', name: 'Saudi Riyal' },
+  { code: 'QAR', symbol: '﷼', name: 'Qatari Riyal' },
+  { code: 'KWD', symbol: 'د.ك', name: 'Kuwaiti Dinar' },
+  { code: 'BHD', symbol: 'د.ب', name: 'Bahraini Dinar' },
+  { code: 'OMR', symbol: '﷼', name: 'Omani Rial' },
+  { code: 'JOD', symbol: 'د.ا', name: 'Jordanian Dinar' },
+  { code: 'ILS', symbol: '₪', name: 'Israeli Shekel' },
+  { code: 'EGP', symbol: '£', name: 'Egyptian Pound' },
+  { code: 'ZAR', symbol: 'R', name: 'South African Rand' },
+  { code: 'NGN', symbol: '₦', name: 'Nigerian Naira' },
+  { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling' },
+  { code: 'GHS', symbol: '₵', name: 'Ghanaian Cedi' },
+  { code: 'MAD', symbol: 'د.م.', name: 'Moroccan Dirham' },
+  { code: 'TND', symbol: 'د.ت', name: 'Tunisian Dinar' },
+  
+  // Americas
+  { code: 'MXN', symbol: '$', name: 'Mexican Peso' },
+  { code: 'BRL', symbol: 'R$', name: 'Brazilian Real' },
+  { code: 'ARS', symbol: '$', name: 'Argentine Peso' },
+  { code: 'CLP', symbol: '$', name: 'Chilean Peso' },
+  { code: 'COP', symbol: '$', name: 'Colombian Peso' },
+  { code: 'PEN', symbol: 'S/', name: 'Peruvian Sol' },
+  { code: 'UYU', symbol: '$U', name: 'Uruguayan Peso' },
+  { code: 'BOB', symbol: 'Bs', name: 'Bolivian Boliviano' },
+  { code: 'VES', symbol: 'Bs.S', name: 'Venezuelan Bolivar' },
+  
+  // Other Major Currencies
+  { code: 'RUB', symbol: '₽', name: 'Russian Ruble' },
+  { code: 'UAH', symbol: '₴', name: 'Ukrainian Hryvnia' },
+  { code: 'BYN', symbol: 'Br', name: 'Belarusian Ruble' },
+  { code: 'KZT', symbol: '₸', name: 'Kazakhstani Tenge' },
+  { code: 'UZS', symbol: 'лв', name: 'Uzbekistani Som' },
+  { code: 'GEL', symbol: '₾', name: 'Georgian Lari' },
+  { code: 'AMD', symbol: '֏', name: 'Armenian Dram' },
+  { code: 'AZN', symbol: '₼', name: 'Azerbaijani Manat' },
 ];
 
 const CATEGORIES = [
@@ -46,6 +117,8 @@ export default function AddExpenseScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedCurrency, setSelectedCurrency] = useState(CURRENCIES[0]);
+  const [currencySearchQuery, setCurrencySearchQuery] = useState('');
+  const [filteredCurrencies, setFilteredCurrencies] = useState(CURRENCIES);
   const [amount, setAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [customCategory, setCustomCategory] = useState('');
@@ -78,6 +151,19 @@ export default function AddExpenseScreen() {
       loadGroupMembers(selectedGroup.id);
     }
   }, [selectedGroup]);
+
+  useEffect(() => {
+    if (currencySearchQuery.trim() === '') {
+      setFilteredCurrencies(CURRENCIES);
+    } else {
+      const filtered = CURRENCIES.filter(currency =>
+        currency.code.toLowerCase().includes(currencySearchQuery.toLowerCase()) ||
+        currency.name.toLowerCase().includes(currencySearchQuery.toLowerCase()) ||
+        currency.symbol.toLowerCase().includes(currencySearchQuery.toLowerCase())
+      );
+      setFilteredCurrencies(filtered);
+    }
+  }, [currencySearchQuery]);
 
   const loadGroups = async () => {
       try {
@@ -274,25 +360,46 @@ export default function AddExpenseScreen() {
       </View>
       
       {/* Currency Selection */}
-      <View style={styles.currencyRow}>
-        {CURRENCIES.map((currency) => (
-    <TouchableOpacity
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#9CA3AF" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search currencies..."
+          placeholderTextColor="#9CA3AF"
+          value={currencySearchQuery}
+          onChangeText={setCurrencySearchQuery}
+        />
+        {currencySearchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setCurrencySearchQuery('')}>
+            <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
+      </View>
+      
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.currencyScrollView}
+        contentContainerStyle={styles.currencyRow}
+      >
+        {filteredCurrencies.map((currency) => (
+          <TouchableOpacity
             key={currency.code}
-      style={[
+            style={[
               styles.currencyChip,
               selectedCurrency.code === currency.code && styles.currencyChipSelected,
             ]}
             onPress={() => setSelectedCurrency(currency)}
           >
-        <Text style={[
+            <Text style={[
               styles.currencyChipText,
               selectedCurrency.code === currency.code && styles.currencyChipTextSelected,
-        ]}>
+            ]}>
               {currency.symbol} {currency.code}
-        </Text>
-    </TouchableOpacity>
+            </Text>
+          </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {/* Amount Input */}
       <View style={styles.amountCard}>
@@ -1074,5 +1181,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: 'white',
     letterSpacing: 0.5,
+  },
+  currencyScrollView: {
+    marginTop: 10,
   },
 }); 

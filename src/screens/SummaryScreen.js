@@ -225,63 +225,23 @@ export default function SummaryScreen() {
           </LinearGradient>
 
         <View style={styles.content}>
-          {/* Summary Stats */}
-          <View style={styles.summaryGrid}>
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryHeader}>
-                <Ionicons name="person" size={24} color="#10b981" />
-                <Text style={styles.summaryLabel}>My Share</Text>
-              </View>
-              {groupDetails.summary.incomesByCurrency && Object.keys(groupDetails.summary.incomesByCurrency).length > 0 ? (
-                Object.entries(groupDetails.summary.incomesByCurrency).map(([currency, data]) => (
-                  <Text key={currency} style={[styles.summaryValue, { color: '#10b981', fontSize: 22, marginBottom: 4 }]}>
-                    {data.symbol}{data.total.toLocaleString()} {currency}
-                  </Text>
-                ))
-              ) : (
-                <Text style={[styles.summaryValue, { color: '#10b981' }]}>
-                  ₺0
+          {/* Total Expenses */}
+          <View style={styles.totalExpensesCard}>
+            <View style={styles.summaryHeader}>
+              <Ionicons name="arrow-down-circle" size={24} color="#ef4444" />
+              <Text style={styles.summaryLabel}>Total Expenses</Text>
+            </View>
+            {groupDetails.summary.expensesByCurrency && Object.keys(groupDetails.summary.expensesByCurrency).length > 0 ? (
+              Object.entries(groupDetails.summary.expensesByCurrency).map(([currency, data]) => (
+                <Text key={currency} style={[styles.summaryValue, { color: '#ef4444', fontSize: 28, marginBottom: 4 }]}>
+                  {data.symbol}{data.total.toLocaleString()} {currency}
                 </Text>
-              )}
-            </View>
-
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryHeader}>
-                <Ionicons name="arrow-down-circle" size={24} color="#ef4444" />
-                <Text style={styles.summaryLabel}>Total Expenses</Text>
-              </View>
-              {groupDetails.summary.expensesByCurrency && Object.keys(groupDetails.summary.expensesByCurrency).length > 0 ? (
-                Object.entries(groupDetails.summary.expensesByCurrency).map(([currency, data]) => (
-                  <Text key={currency} style={[styles.summaryValue, { color: '#ef4444', fontSize: 22, marginBottom: 4 }]}>
-                    {data.symbol}{data.total.toLocaleString()} {currency}
-                  </Text>
-                ))
-              ) : (
-                <Text style={[styles.summaryValue, { color: '#ef4444' }]}>
-                  ₺0
-                </Text>
-              )}
-            </View>
-
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryHeader}>
-                <Ionicons name="people" size={24} color="#3b82f6" />
-                <Text style={styles.summaryLabel}>Members</Text>
-              </View>
-              <Text style={[styles.summaryValue, { color: '#3b82f6' }]}>
-                {groupDetails.summary.memberCount}
+              ))
+            ) : (
+              <Text style={[styles.summaryValue, { color: '#ef4444', fontSize: 28 }]}>
+                ₺0
               </Text>
-            </View>
-
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryHeader}>
-                <Ionicons name="receipt" size={24} color="#8b5cf6" />
-                <Text style={styles.summaryLabel}>Expenses</Text>
-              </View>
-              <Text style={[styles.summaryValue, { color: '#8b5cf6' }]}>
-                {groupDetails.summary.expenseCount}
-              </Text>
-            </View>
+            )}
           </View>
 
           {/* Members Section */}
@@ -651,6 +611,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+  },
+  totalExpensesCard: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    marginBottom: 24,
+    alignItems: 'center',
   },
   summaryHeader: {
     flexDirection: 'row',
