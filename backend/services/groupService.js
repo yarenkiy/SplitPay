@@ -106,13 +106,37 @@ class GroupService {
     const isLoan = splitType === 'loan' || (participantIds.length === 1 && !payerIsParticipant);
 
     if (isLoan) {
-      // Loan: Only create negative record for the payer (lender)
+      // Loan: Create a negative record for the lender and positive records for each borrower
       console.log('Creating LOAN expense:', description, 'Amount:', totalAmount);
-      
-      await groupRepository.addExpense(
-        groupId, paidById, paidById, -totalAmount,
-        description, expenseCurrency, expenseCurrencySymbol, 1
-      );
+
+      // Determine borrowers: everyone except the lender; if participants provided and exclude payer, use those
+      let borrowerIds = participants && participants.length > 0
+        ? participants.map(id => parseInt(id)).filter(id => id !== paidById)
+        : (await groupRepository.getGroupMembers(groupId)).map(m => m.id).filter(id => Number(id) !== paidById);
+
+      if (borrowerIds.length === 0) {
+        // Fallback: treat as self-loan; just record lender negative (legacy behavior)
+        await groupRepository.addExpense(
+          groupId, paidById, paidById, -totalAmount,
+          description, expenseCurrency, expenseCurrencySymbol, 1
+        );
+      } else {
+        const perBorrower = totalAmount / borrowerIds.length;
+
+        // Lender negative total
+        await groupRepository.addExpense(
+          groupId, paidById, paidById, -totalAmount,
+          description, expenseCurrency, expenseCurrencySymbol, borrowerIds.length + 1
+        );
+
+        // Borrower positives
+        for (const borrowerId of borrowerIds) {
+          await groupRepository.addExpense(
+            groupId, borrowerId, paidById, perBorrower,
+            description, expenseCurrency, expenseCurrencySymbol, borrowerIds.length + 1
+          );
+        }
+      }
     } else {
       // Shared expense: Create records for all participants
       console.log('Creating SHARED expense:', description, 'Amount:', totalAmount, 'Participants:', participantIds.length);
@@ -581,40 +605,77 @@ uniqueExpenses.forEach((expense, key) => {
     paidForMatrix[paidBy] = {};
   }
 
-  // Handle LOAN case
+  // Handle LOAN case: prefer positive borrower entries present in userAmounts;
+  // for legacy single-negative loans, infer borrower from description/name heuristics
   if (positiveAmounts.length === 0 && negativeAmounts.length > 0) {
-    const loanAmount = Math.abs(negativeAmounts[0]);
-    const otherMembers = members.filter(m => Number(m.id) !== paidBy);
-    
     console.log(`   Type: LOAN`);
-    console.log(`   Loan amount: ${loanAmount}`);
-    console.log(`   Borrowers: ${otherMembers.length} members`);
+    const borrowerEntries = Object.entries(expense.userAmounts).filter(([, amt]) => amt > 0);
+    if (borrowerEntries.length === 0) {
+      // infer borrower by name match in description
+      const description = key.split('-')[0].toLowerCase();
+      const memberNameToId = new Map(
+        members.map(m => [String(m.name || '').toLowerCase(), Number(m.id)])
+      );
+      let inferredBorrowerId = undefined;
+      for (const [name, id] of memberNameToId.entries()) {
+        if (!name) continue;
+        if (description.includes(name) && id !== paidBy) {
+          inferredBorrowerId = id;
+          break;
+        }
+      }
 
-    if (otherMembers.length === 1) {
-      // Single borrower - they owe the full amount
-      const borrowerId = Number(otherMembers[0].id);
+      // if not found, try to reuse borrower from another loan of same payer that mentions a member name
+      if (!inferredBorrowerId) {
+        // find any other loan-only uniqueExpense of same payer with name mention
+        for (const [otherKey, otherExpense] of uniqueExpenses.entries()) {
+          if (otherExpense === expense) continue;
+          const otherPos = otherExpense.amounts.filter(a => a > 0);
+          const otherNeg = otherExpense.amounts.filter(a => a < 0);
+          const otherPaidBy = Number(otherExpense.paidBy);
+          if (otherPaidBy !== paidBy) continue;
+          if (otherPos.length === 0 && otherNeg.length > 0) {
+            const otherDesc = otherKey.split('-')[0].toLowerCase();
+            for (const [name, id] of memberNameToId.entries()) {
+              if (!name) continue;
+              if (otherDesc.includes(name) && id !== paidBy) {
+                inferredBorrowerId = id;
+                break;
+              }
+            }
+          }
+          if (inferredBorrowerId) break;
+        }
+      }
+
+      if (!inferredBorrowerId) {
+        console.log('   (skipped legacy loan without borrower-positive entries)');
+        return;
+      }
+
+      // attribute full absolute negative amount to inferred borrower
+      const loanAmount = Math.abs(negativeAmounts[0]);
+      if (!paidForMatrix[paidBy][inferredBorrowerId]) {
+        paidForMatrix[paidBy][inferredBorrowerId] = {};
+      }
+      if (!paidForMatrix[paidBy][inferredBorrowerId][currency]) {
+        paidForMatrix[paidBy][inferredBorrowerId][currency] = { amount: 0, symbol };
+      }
+      paidForMatrix[paidBy][inferredBorrowerId][currency].amount += loanAmount;
+      console.log(`   -> User ${paidBy} paid ${loanAmount} ${currency} for User ${inferredBorrowerId} (inferred)`);
+      return;
+    }
+    for (const [uid, amt] of borrowerEntries) {
+      const borrowerId = Number(uid);
+      if (borrowerId === paidBy) continue;
       if (!paidForMatrix[paidBy][borrowerId]) {
         paidForMatrix[paidBy][borrowerId] = {};
       }
       if (!paidForMatrix[paidBy][borrowerId][currency]) {
         paidForMatrix[paidBy][borrowerId][currency] = { amount: 0, symbol };
       }
-      paidForMatrix[paidBy][borrowerId][currency].amount += loanAmount;
-      console.log(`   -> User ${paidBy} paid ${loanAmount} ${currency} for User ${borrowerId}`);
-    } else if (otherMembers.length > 1) {
-      // Multiple borrowers - split equally
-      const splitAmount = loanAmount / otherMembers.length;
-      otherMembers.forEach(m => {
-        const borrowerId = Number(m.id);
-        if (!paidForMatrix[paidBy][borrowerId]) {
-          paidForMatrix[paidBy][borrowerId] = {};
-        }
-        if (!paidForMatrix[paidBy][borrowerId][currency]) {
-          paidForMatrix[paidBy][borrowerId][currency] = { amount: 0, symbol };
-        }
-        paidForMatrix[paidBy][borrowerId][currency].amount += splitAmount;
-        console.log(`   -> User ${paidBy} paid ${splitAmount} ${currency} for User ${borrowerId}`);
-      });
+      paidForMatrix[paidBy][borrowerId][currency].amount += this.parseAmount(amt);
+      console.log(`   -> User ${paidBy} paid ${this.parseAmount(amt)} ${currency} for User ${borrowerId}`);
     }
     return;
   }
