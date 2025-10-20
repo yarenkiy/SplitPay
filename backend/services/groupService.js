@@ -555,75 +555,151 @@ class GroupService {
     console.log('=== END DEBUG ===\n');
 
     // Create balance matrix
-    const balanceMatrix = [];
-    const pairBalances = {};
+// Logic: A owes B = (What B paid for A) - (What A paid for B)
+const balanceMatrix = [];
 
-    uniqueExpenses.forEach((expense) => {
-      const currency = expense.currency || 'TRY';
-      const symbol = expense.symbol || '₺';
-      const paidBy = Number(expense.paidBy);
+// Track what each person paid FOR each other person, by currency
+// Structure: paidForMatrix[payerId][beneficiaryId][currency] = amount
+const paidForMatrix = {};
 
-      const positiveAmounts = expense.amounts.filter(a => a > 0);
-      const negativeAmounts = expense.amounts.filter(a => a < 0);
+console.log('\n💰 === CALCULATING WHO PAID FOR WHOM ===');
 
-      if (positiveAmounts.length === 0 && negativeAmounts.length > 0) {
-        const loanAmount = Math.abs(negativeAmounts[0]);
-        const otherMembers = members.filter(m => Number(m.id) !== paidBy);
+uniqueExpenses.forEach((expense, key) => {
+  const currency = expense.currency || 'TRY';
+  const symbol = expense.symbol || '₺';
+  const paidBy = Number(expense.paidBy);
+  
+  console.log(`\n📝 Expense: ${key.split('-')[0]}`);
+  console.log(`   Paid by: User ${paidBy}`);
+  console.log(`   Currency: ${currency}`);
 
-        if (otherMembers.length === 1) {
-          const borrowerId = otherMembers[0].id;
-          const key = `${borrowerId}_${paidBy}_${currency}`;
-          if (!pairBalances[key]) pairBalances[key] = { amount: 0, symbol };
-          pairBalances[key].amount += loanAmount;
-        } else if (otherMembers.length > 1) {
-          const split = loanAmount / otherMembers.length;
-          otherMembers.forEach(m => {
-            const key = `${m.id}_${paidBy}_${currency}`;
-            if (!pairBalances[key]) pairBalances[key] = { amount: 0, symbol };
-            pairBalances[key].amount += split;
-          });
-        } else {
-          Object.entries(expense.userAmounts).forEach(([uid, amt]) => {
-            if (amt > 0) {
-              const key = `${uid}_${paidBy}_${currency}`;
-              if (!pairBalances[key]) pairBalances[key] = { amount: 0, symbol };
-              pairBalances[key].amount += loanAmount;
-            }
-          });
-        }
-        return;
+  const positiveAmounts = expense.amounts.filter(a => a > 0);
+  const negativeAmounts = expense.amounts.filter(a => a < 0);
+  
+  // Initialize paidBy's matrix if needed
+  if (!paidForMatrix[paidBy]) {
+    paidForMatrix[paidBy] = {};
+  }
+
+  // Handle LOAN case
+  if (positiveAmounts.length === 0 && negativeAmounts.length > 0) {
+    const loanAmount = Math.abs(negativeAmounts[0]);
+    const otherMembers = members.filter(m => Number(m.id) !== paidBy);
+    
+    console.log(`   Type: LOAN`);
+    console.log(`   Loan amount: ${loanAmount}`);
+    console.log(`   Borrowers: ${otherMembers.length} members`);
+
+    if (otherMembers.length === 1) {
+      // Single borrower - they owe the full amount
+      const borrowerId = Number(otherMembers[0].id);
+      if (!paidForMatrix[paidBy][borrowerId]) {
+        paidForMatrix[paidBy][borrowerId] = {};
       }
-
-      Object.entries(expense.userAmounts).forEach(([uid, amt]) => {
-        const numericUid = Number(uid);
-        if (numericUid === paidBy) return;
-        const owed = this.parseAmount(amt) > 0 ? this.parseAmount(amt) : 0;
-        if (owed <= 0) return;
-        const key = `${numericUid}_${paidBy}_${currency}`;
-        if (!pairBalances[key]) pairBalances[key] = { amount: 0, symbol };
-        pairBalances[key].amount += owed;
+      if (!paidForMatrix[paidBy][borrowerId][currency]) {
+        paidForMatrix[paidBy][borrowerId][currency] = { amount: 0, symbol };
+      }
+      paidForMatrix[paidBy][borrowerId][currency].amount += loanAmount;
+      console.log(`   -> User ${paidBy} paid ${loanAmount} ${currency} for User ${borrowerId}`);
+    } else if (otherMembers.length > 1) {
+      // Multiple borrowers - split equally
+      const splitAmount = loanAmount / otherMembers.length;
+      otherMembers.forEach(m => {
+        const borrowerId = Number(m.id);
+        if (!paidForMatrix[paidBy][borrowerId]) {
+          paidForMatrix[paidBy][borrowerId] = {};
+        }
+        if (!paidForMatrix[paidBy][borrowerId][currency]) {
+          paidForMatrix[paidBy][borrowerId][currency] = { amount: 0, symbol };
+        }
+        paidForMatrix[paidBy][borrowerId][currency].amount += splitAmount;
+        console.log(`   -> User ${paidBy} paid ${splitAmount} ${currency} for User ${borrowerId}`);
       });
+    }
+    return;
+  }
+
+  // Handle SHARED EXPENSE case
+  console.log(`   Type: SHARED EXPENSE`);
+  
+  // Calculate what payer paid FOR each participant
+  Object.entries(expense.userAmounts).forEach(([uid, amt]) => {
+    const beneficiaryId = Number(uid);
+    if (beneficiaryId === paidBy) return; // Skip payer themselves
+    
+    const owedAmount = this.parseAmount(amt);
+    if (owedAmount <= 0) return;
+    
+    // Payer paid this amount FOR the beneficiary
+    if (!paidForMatrix[paidBy][beneficiaryId]) {
+      paidForMatrix[paidBy][beneficiaryId] = {};
+    }
+    if (!paidForMatrix[paidBy][beneficiaryId][currency]) {
+      paidForMatrix[paidBy][beneficiaryId][currency] = { amount: 0, symbol };
+    }
+    paidForMatrix[paidBy][beneficiaryId][currency].amount += owedAmount;
+    console.log(`   -> User ${paidBy} paid ${owedAmount} ${currency} for User ${beneficiaryId}`);
+  });
+});
+
+console.log('\n💳 === PAID FOR MATRIX (Raw) ===');
+Object.entries(paidForMatrix).forEach(([payerId, beneficiaries]) => {
+  console.log(`User ${payerId} paid for:`);
+  Object.entries(beneficiaries).forEach(([beneficiaryId, currencies]) => {
+    Object.entries(currencies).forEach(([currency, data]) => {
+      console.log(`  -> User ${beneficiaryId}: ${data.amount} ${currency}`);
     });
+  });
+});
 
-    // Net pair balances
-    const processed = new Set();
-    Object.keys(pairBalances).forEach(key => {
-      if (processed.has(key)) return;
-      const [fromIdStr, toIdStr, currency] = key.split('_');
-      const reverseKey = `${toIdStr}_${fromIdStr}_${currency}`;
+// Now calculate net balances: A owes B = (B paid for A) - (A paid for B)
+console.log('\n🔄 === CALCULATING NET BALANCES ===');
+const processed = new Set();
 
-      const forward = pairBalances[key]?.amount || 0;
-      const reverse = pairBalances[reverseKey]?.amount || 0;
-      const net = forward - reverse;
-
+members.forEach(memberA => {
+  const idA = Number(memberA.id);
+  
+  members.forEach(memberB => {
+    const idB = Number(memberB.id);
+    if (idA >= idB) return; // Process each pair only once
+    
+    const pairKey = `${idA}_${idB}`;
+    if (processed.has(pairKey)) return;
+    processed.add(pairKey);
+    
+    // Get all currencies involved between these two users
+    const currenciesInvolved = new Set();
+    
+    if (paidForMatrix[idA]?.[idB]) {
+      Object.keys(paidForMatrix[idA][idB]).forEach(c => currenciesInvolved.add(c));
+    }
+    if (paidForMatrix[idB]?.[idA]) {
+      Object.keys(paidForMatrix[idB][idA]).forEach(c => currenciesInvolved.add(c));
+    }
+    
+    // Calculate net balance for each currency
+    currenciesInvolved.forEach(currency => {
+      const aPaidForB = paidForMatrix[idA]?.[idB]?.[currency]?.amount || 0;
+      const bPaidForA = paidForMatrix[idB]?.[idA]?.[currency]?.amount || 0;
+      
+      // Net: positive means A owes B, negative means B owes A
+      const net = bPaidForA - aPaidForB;
+      
+      console.log(`\nPair: User ${idA} vs User ${idB} (${currency})`);
+      console.log(`  User ${idA} paid for User ${idB}: ${aPaidForB}`);
+      console.log(`  User ${idB} paid for User ${idA}: ${bPaidForA}`);
+      console.log(`  Net: ${net} (${net > 0 ? `User ${idA} owes User ${idB}` : `User ${idB} owes User ${idA}`})`);
+      
       if (Math.abs(net) > 0.009) {
-        const fromId = net > 0 ? fromIdStr : toIdStr;
-        const toId = net > 0 ? toIdStr : fromIdStr;
+        const fromId = net > 0 ? idA : idB;
+        const toId = net > 0 ? idB : idA;
         const amount = Math.round(Math.abs(net) * 100) / 100;
-        const symbol = pairBalances[key]?.symbol || pairBalances[reverseKey]?.symbol || '₺';
-        const fromName = (members.find(m => String(m.id) === String(fromId)) || {}).name || `User ${fromId}`;
-        const toName = (members.find(m => String(m.id) === String(toId)) || {}).name || `User ${toId}`;
-
+        const symbol = paidForMatrix[idA]?.[idB]?.[currency]?.symbol || 
+                      paidForMatrix[idB]?.[idA]?.[currency]?.symbol || '₺';
+        
+        const fromName = members.find(m => Number(m.id) === fromId)?.name || `User ${fromId}`;
+        const toName = members.find(m => Number(m.id) === toId)?.name || `User ${toId}`;
+        
         balanceMatrix.push({
           from: fromName,
           to: toName,
@@ -631,12 +707,17 @@ class GroupService {
           currency,
           currencySymbol: symbol
         });
+        
+        console.log(`  ✅ Balance: ${fromName} owes ${toName} ${amount} ${currency}`);
       }
-
-      processed.add(key);
-      processed.add(reverseKey);
     });
+  });
+});
 
+console.log('\n✅ === FINAL BALANCE MATRIX ===');
+balanceMatrix.forEach(b => {
+  console.log(`${b.from} owes ${b.to}: ${b.amount} ${b.currency}`);
+});
     return {
       success: true,
       data: {
