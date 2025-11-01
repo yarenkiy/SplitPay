@@ -3,7 +3,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useContext, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Modal,
     SafeAreaView,
     ScrollView,
@@ -23,6 +22,7 @@ import {
     isTablet,
     scaleFontSize
 } from '../utils/responsive';
+import { showError, showSuccess, showConfirmation } from '../utils/errorHandler';
 
 export default function SettingsScreen() {
   const { user, logout } = useContext(AuthContext);
@@ -57,7 +57,7 @@ export default function SettingsScreen() {
   );
 
   const handleLogout = () => {
-    Alert.alert(
+    showConfirmation(
       'Sign Out',
       'Are you sure you want to sign out?',
       [
@@ -72,7 +72,7 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteGroup = async (groupId, groupName) => {
-    Alert.alert(
+    showConfirmation(
       'Delete Group',
       `Are you sure you want to delete "${groupName}"? This action cannot be undone and all expenses related to this group will be deleted.`,
       [
@@ -90,12 +90,12 @@ export default function SettingsScreen() {
               console.log('Delete response:', response.data);
               // Remove from local state
               setGroups(prevGroups => prevGroups.filter(g => g.id !== groupId));
-              Alert.alert('Success', 'Group deleted successfully.');
+              showSuccess('Success', 'Group deleted successfully.');
             } catch (error) {
               console.error('Error deleting group:', error);
               console.error('Error response:', error.response?.data);
               console.error('Error status:', error.response?.status);
-              Alert.alert('Error', `An error occurred while deleting the group: ${error.response?.data?.message || error.message}`);
+              showError('Error', `An error occurred while deleting the group: ${error.response?.data?.message || error.message}`);
             }
           }
         }
@@ -105,17 +105,17 @@ export default function SettingsScreen() {
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showError('Error', 'Please fill in all fields');
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Error', 'New password must be at least 6 characters long');
+      showError('Error', 'New password must be at least 6 characters long');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'New passwords do not match');
+      showError('Error', 'New passwords do not match');
       return;
     }
 
@@ -123,7 +123,7 @@ export default function SettingsScreen() {
     
     try {
       const response = await authAPI.changePassword(currentPassword, newPassword);
-      Alert.alert('Success', response.data.message || 'Your password has been changed successfully.');
+      showSuccess('Success', response.data.message || 'Your password has been changed successfully.');
       setShowChangePasswordModal(false);
       setCurrentPassword('');
       setNewPassword('');
@@ -131,7 +131,7 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('Change password error:', error);
       const errorMessage = error.response?.data?.message || 'An error occurred while changing password.';
-      Alert.alert('Error', errorMessage);
+      showError('Error', errorMessage);
     } finally {
       setChangePasswordLoading(false);
     }

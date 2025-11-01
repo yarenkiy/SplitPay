@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useContext, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Clipboard,
   Modal,
   RefreshControl,
@@ -31,6 +30,7 @@ import {
   isTablet,
   scaleFontSize
 } from '../utils/responsive';
+import { showError, showSuccess, showConfirmation, showInfo } from '../utils/errorHandler';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -72,11 +72,11 @@ export default function DashboardScreen() {
         setGroups(userGroups);
         setRecentActivities(activities);
       } else {
-        Alert.alert('Error', 'Dashboard data could not be loaded');
+        showError('Error', 'Dashboard data could not be loaded');
       }
     } catch (error) {
       console.error('Dashboard data fetch error:', error);
-      Alert.alert('Error', 'An error occurred while loading data');
+      showError('Error', 'An error occurred while loading data');
     } finally {
       setIsLoading(false);
     }
@@ -102,7 +102,7 @@ export default function DashboardScreen() {
 
   const handleJoinGroup = async () => {
     if (!inviteCode || inviteCode.trim().length !== 6) {
-      Alert.alert('Invalid Code', 'Please enter a valid 6-character invite code');
+      showError('Invalid Code', 'Please enter a valid 6-character invite code');
       return;
     }
 
@@ -111,7 +111,7 @@ export default function DashboardScreen() {
       const response = await groupAPI.joinGroupByCode(inviteCode.trim().toUpperCase());
       
       if (response.data.success) {
-        Alert.alert('Success! 🎉', response.data.message);
+        showSuccess('Success! 🎉', response.data.message);
         setJoinModalVisible(false);
         setInviteCode('');
         // Refresh dashboard data to show new group
@@ -120,7 +120,7 @@ export default function DashboardScreen() {
     } catch (error) {
       console.error('Join group error:', error);
       const message = error.response?.data?.message || 'Failed to join group';
-      Alert.alert('Error', message);
+      showError('Error', message);
     } finally {
       setIsJoining(false);
     }
@@ -144,14 +144,14 @@ export default function DashboardScreen() {
       }
     } catch (error) {
       console.log('Navigation error:', error);
-      Alert.alert('Error', 'Navigation failed');
+      showError('Error', 'Navigation failed');
     }
   };
 
   // --- UI Helpers ---
   const copyInviteCode = (code) => {
     Clipboard.setString(code);
-    Alert.alert('Copied! 📋', `Invite code ${code} copied to clipboard`);
+    showInfo('Copied! 📋', `Invite code ${code} copied to clipboard`);
   };
 
   const handleGroupPress = (group) => {
@@ -197,7 +197,7 @@ export default function DashboardScreen() {
   );
 
   const handleDeleteActivity = async (activityId) => {
-    Alert.alert(
+    showConfirmation(
       'Delete Activity',
       'Are you sure you want to delete this activity?',
       [
@@ -216,7 +216,7 @@ export default function DashboardScreen() {
             } catch (error) {
               console.error('Delete activity error:', error);
               const message = error.response?.data?.message || 'Failed to delete activity';
-              Alert.alert('Error', message);
+              showError('Error', message);
             }
           },
         },

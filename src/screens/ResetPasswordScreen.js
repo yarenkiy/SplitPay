@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { authAPI } from '../services/api';
 import {
     getResponsiveBorderRadius,
@@ -11,6 +11,7 @@ import {
     isTablet,
     scaleFontSize
 } from '../utils/responsive';
+import { showError, showSuccess } from '../utils/errorHandler';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -23,25 +24,24 @@ export default function ResetPasswordScreen() {
   useEffect(() => {
     if (!email) {
       setIsValidEmail(false);
-      Alert.alert('Error', 'Email address is required', [
-        { text: 'OK', onPress: () => router.replace('/forgot-password') }
-      ]);
+      showError('Error', 'Email address is required');
+      setTimeout(() => router.replace('/forgot-password'), 2000);
     }
   }, [email]);
 
   const handleResetPassword = async () => {
     if (!newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showError('Error', 'Please fill in all fields');
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+      showError('Error', 'Password must be at least 6 characters long');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      showError('Error', 'Passwords do not match');
       return;
     }
 
@@ -49,7 +49,7 @@ export default function ResetPasswordScreen() {
     
     try {
       const response = await authAPI.resetPassword(email, newPassword);
-      Alert.alert(
+      showSuccess(
         'Success', 
         response.data.message || 'Your password has been reset successfully.',
         [
@@ -62,7 +62,7 @@ export default function ResetPasswordScreen() {
     } catch (error) {
       console.error('Reset password error:', error);
       const errorMessage = error.response?.data?.message || 'An error occurred while resetting password.';
-      Alert.alert('Error', errorMessage);
+      showError('Error', errorMessage);
       
       if (error.response?.status === 400) {
         // No verified code found

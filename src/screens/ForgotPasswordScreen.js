@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { authAPI } from '../services/api';
 import {
     getResponsiveBorderRadius,
@@ -11,6 +11,7 @@ import {
     isTablet,
     scaleFontSize
 } from '../utils/responsive';
+import { showError, showSuccess } from '../utils/errorHandler';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -19,14 +20,14 @@ export default function ForgotPasswordScreen() {
 
   const handleForgotPassword = async () => {
     if (!email) {
-      Alert.alert('Error', 'Please enter your email address');
+      showError('Error', 'Please enter your email address');
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      showError('Error', 'Please enter a valid email address');
       return;
     }
 
@@ -34,7 +35,7 @@ export default function ForgotPasswordScreen() {
     
     try {
       const response = await authAPI.forgotPassword(email);
-      Alert.alert(
+      showSuccess(
         'Success', 
         response.data.message || 'A verification code has been sent to your email address.',
         [
@@ -46,7 +47,7 @@ export default function ForgotPasswordScreen() {
       );
     } catch (error) {
       console.error('Forgot password error:', error);
-      Alert.alert('Error', 'An error occurred while sending password reset request. Please try again.');
+      showError('Error', 'An error occurred while sending password reset request. Please try again.');
     } finally {
       setIsLoading(false);
     }

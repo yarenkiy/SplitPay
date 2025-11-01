@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { authAPI } from '../services/api';
 import {
     getResponsiveBorderRadius,
@@ -11,6 +11,7 @@ import {
     isTablet,
     scaleFontSize
 } from '../utils/responsive';
+import { showError, showSuccess } from '../utils/errorHandler';
 
 export default function VerifyCodeScreen() {
   const router = useRouter();
@@ -21,9 +22,8 @@ export default function VerifyCodeScreen() {
 
   useEffect(() => {
     if (!email) {
-      Alert.alert('Error', 'Email address is required', [
-        { text: 'OK', onPress: () => router.replace('/forgot-password') }
-      ]);
+      showError('Error', 'Email address is required');
+      setTimeout(() => router.replace('/forgot-password'), 2000);
     }
   }, [email]);
 
@@ -51,7 +51,7 @@ export default function VerifyCodeScreen() {
 
   const handleVerifyCode = async () => {
     if (verificationCode.length !== 6) {
-      Alert.alert('Error', 'Please enter the complete 6-digit code');
+      showError('Error', 'Please enter the complete 6-digit code');
       return;
     }
 
@@ -59,7 +59,7 @@ export default function VerifyCodeScreen() {
     
     try {
       const response = await authAPI.verifyResetCode(email, verificationCode);
-      Alert.alert(
+      showSuccess(
         'Success', 
         response.data.message || 'Verification code verified successfully.',
         [
@@ -72,7 +72,7 @@ export default function VerifyCodeScreen() {
     } catch (error) {
       console.error('Verify code error:', error);
       const errorMessage = error.response?.data?.message || 'Invalid or expired verification code.';
-      Alert.alert('Error', errorMessage);
+      showError('Error', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -83,10 +83,10 @@ export default function VerifyCodeScreen() {
     
     try {
       const response = await authAPI.forgotPassword(email);
-      Alert.alert('Success', 'A new verification code has been sent to your email.');
+      showSuccess('Success', 'A new verification code has been sent to your email.');
     } catch (error) {
       console.error('Resend code error:', error);
-      Alert.alert('Error', 'Failed to resend verification code. Please try again.');
+      showError('Error', 'Failed to resend verification code. Please try again.');
     } finally {
       setIsLoading(false);
     }

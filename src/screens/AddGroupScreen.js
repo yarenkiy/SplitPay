@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Dimensions,
     KeyboardAvoidingView,
     Platform,
@@ -24,6 +23,7 @@ import {
     isTablet,
     scaleFontSize
 } from '../utils/responsive';
+import { showError, showSuccess } from '../utils/errorHandler';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -58,7 +58,7 @@ export default function AddGroupScreen() {
 
   const validate = () => {
     if (!name.trim()) {
-      Alert.alert('Required', 'Please enter a group name');
+      showError('Required', 'Please enter a group name');
       return false;
     }
     return true;
@@ -77,7 +77,7 @@ export default function AddGroupScreen() {
       });
       
       if (res?.data?.id && res?.data?.invite_code) {
-        Alert.alert(
+        showSuccess(
           'Success! 🎉',
           `Group created!\nInvite Code: ${res.data.invite_code}\n\nShare this code with friends to join the group!`,
           [
@@ -88,11 +88,11 @@ export default function AddGroupScreen() {
           ]
         );
       } else {
-        Alert.alert('Error', 'Failed to create group');
+        showError('Error', 'Failed to create group');
       }
     } catch (e) {
       console.error('Create group error:', e);
-      Alert.alert('Error', 'An error occurred while creating the group');
+      showError('Error', 'An error occurred while creating the group');
     } finally {
       setIsSubmitting(false);
     }

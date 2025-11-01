@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useContext, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import {
     getResponsiveBorderRadius,
@@ -11,6 +11,7 @@ import {
     isTablet,
     scaleFontSize
 } from '../utils/responsive';
+import { showError, showSuccess } from '../utils/errorHandler';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -22,12 +23,12 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
-      Alert.alert('Error', 'All fields are required');
+      showError('Error', 'All fields are required');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+      showError('Error', 'Password must be at least 6 characters long');
       return;
     }
 
@@ -38,13 +39,13 @@ export default function RegisterScreen() {
       
       if (result.success) {
         // Registration successful - AuthContext will automatically redirect to dashboard
-        Alert.alert('Success', 'Registration completed! Welcome to LetSPLIT!');
+        showSuccess('Success', 'Registration completed! Welcome to LetSPLIT!');
       } else {
         // Registration failed, show error message
-        Alert.alert('Registration Failed', result.error || 'An error occurred during registration');
+        showError('Registration Failed', result.error || 'An error occurred during registration');
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred during registration');
+      showError('Error', 'An error occurred during registration');
     } finally {
       setIsLoading(false);
     }

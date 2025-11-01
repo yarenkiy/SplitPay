@@ -4,7 +4,6 @@ import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   ScrollView,
   StatusBar,
@@ -16,6 +15,7 @@ import {
 import CurrencyConverter from '../../components/CurrencyConverter';
 import { useSelectedGroup } from '../context/SelectedGroupContext';
 import { dashboardAPI, groupAPI } from '../services/api';
+import { showConfirmation, showError } from '../utils/errorHandler';
 import {
   getResponsiveMargin,
   getResponsivePadding,
@@ -64,7 +64,7 @@ export default function SummaryScreen() {
     } catch (error) {
       console.error('Fetch groups error:', error);
       setGroups([]);
-      Alert.alert('Error', 'Failed to load groups');
+      showError('Error', 'Failed to load groups');
     } finally {
       setIsLoading(false);
     }
@@ -79,14 +79,14 @@ export default function SummaryScreen() {
       }
     } catch (error) {
       console.error('Fetch group details error:', error);
-      Alert.alert('Error', 'Failed to load group details');
+      showError('Error', 'Failed to load group details');
     } finally {
       setLoadingDetails(false);
     }
   };
 
   const handleDeleteExpense = async (expenseId) => {
-    Alert.alert(
+    showConfirmation(
       'Delete Expense',
       'Are you sure you want to delete this expense?',
       [
@@ -107,7 +107,7 @@ export default function SummaryScreen() {
             } catch (error) {
               console.error('Delete expense error:', error);
               const message = error.response?.data?.message || 'Failed to delete expense';
-              Alert.alert('Error', message);
+              showError('Error', message);
             }
           },
         },

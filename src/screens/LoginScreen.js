@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useContext, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import {
     getResponsiveBorderRadius,
@@ -11,6 +11,7 @@ import {
     isTablet,
     scaleFontSize
 } from '../utils/responsive';
+import { showError } from '../utils/errorHandler';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -21,12 +22,12 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter your email and password');
+      showError('Error', 'Please enter your email and password');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+      showError('Error', 'Password must be at least 6 characters long');
       return;
     }
 
@@ -44,11 +45,11 @@ export default function LoginScreen() {
       } else {
         console.log('Login failed:', result.error);
         // Login failed, show error message
-        Alert.alert('Login Failed', result.error || 'Invalid email or password');
+        showError('Login Failed', result.error || 'Invalid email or password');
       }
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Error', 'An error occurred during login: ' + error.message);
+      showError('Error', 'An error occurred during login: ' + error.message);
     } finally {
       setIsLoading(false);
     }

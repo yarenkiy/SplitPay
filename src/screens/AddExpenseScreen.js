@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
@@ -20,6 +19,7 @@ import {
     isSmallDevice,
     scaleFontSize
 } from '../utils/responsive';
+import { showError, showSuccess } from '../utils/errorHandler';
 
 const CURRENCIES = [
   // Major Currencies
@@ -175,7 +175,7 @@ export default function AddExpenseScreen() {
       setFilteredGroups(groupsData);
     } catch (error) {
       console.error('Load groups error:', error);
-      Alert.alert('Error', 'Failed to load groups');
+      showError('Error', 'Failed to load groups');
     } finally {
       setIsLoading(false);
     }
@@ -209,25 +209,25 @@ export default function AddExpenseScreen() {
   const handleSubmit = async () => {
     // Validation
     if (!selectedGroup) {
-      Alert.alert('Error', 'Please select a group');
+      showError('Error', 'Please select a group');
       return;
     }
     if (!amount || parseFloat(amount) <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+      showError('Error', 'Please enter a valid amount');
       return;
     }
     if (!selectedCategory) {
-      Alert.alert('Error', 'Please select a category');
+      showError('Error', 'Please select a category');
       return;
     }
     if (selectedCategory.id === '6' && !customCategory.trim()) {
-      Alert.alert('Error', 'Please enter custom category name');
+      showError('Error', 'Please enter custom category name');
       return;
     }
 
     const participantCount = Object.values(selectedParticipants).filter(Boolean).length;
     if (participantCount === 0) {
-      Alert.alert('Error', 'Please select at least one participant');
+      showError('Error', 'Please select at least one participant');
       return;
     }
 
@@ -239,7 +239,7 @@ export default function AddExpenseScreen() {
       for (const id of selectedIds) {
         const customAmount = parseFloat(customAmounts[id] || 0);
         if (!customAmounts[id] || customAmount <= 0) {
-          Alert.alert('Error', 'Please enter valid amounts for all participants');
+          showError('Error', 'Please enter valid amounts for all participants');
       return;
         }
         totalCustomAmount += customAmount;
@@ -247,7 +247,7 @@ export default function AddExpenseScreen() {
       
       // Check if custom amounts total matches the main amount
       if (Math.abs(totalCustomAmount - parseFloat(amount)) > 0.01) {
-        Alert.alert(
+        showError(
           'Amount Mismatch',
           `Total custom amounts (${selectedCurrency.symbol}${totalCustomAmount.toFixed(2)}) must equal the expense amount (${selectedCurrency.symbol}${parseFloat(amount).toFixed(2)})`
         );
@@ -283,7 +283,7 @@ export default function AddExpenseScreen() {
       
       await groupAPI.addExpense(selectedGroup.id, payload);
 
-      Alert.alert(
+      showSuccess(
         'Success! 🎉',
         `${selectedCurrency.symbol}${amount} expense added to ${selectedGroup.name}`,
         [
@@ -295,7 +295,7 @@ export default function AddExpenseScreen() {
       );
     } catch (error) {
       console.error('Add expense error:', error);
-      Alert.alert('Error', 'Failed to add expense');
+      showError('Error', 'Failed to add expense');
     } finally {
       setIsSubmitting(false);
     }
