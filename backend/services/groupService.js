@@ -376,13 +376,9 @@ class GroupService {
           // Shared expense: infer full total from positive shares
           const sumPositives = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
           const participants = expense.participantsCount || (negativeAmounts.length > 0 ? positiveAmounts.length + 1 : positiveAmounts.length);
-          if (negativeAmounts.length > 0 && participants > 1) {
-            // Payer is a participant -> positives exclude payer's own share
-            expenseTotal = (sumPositives * participants) / (participants - 1);
-          } else {
-            // Payer not a participant -> positives already sum to total
-            expenseTotal = sumPositives;
-          }
+          // Shared expense total = sum of positive amounts + absolute of negative ones (for safety)
+expenseTotal = sumPositives || Math.abs(negativeAmounts[0]) || 0;
+
         } else if (negativeAmounts.length > 0) {
           // Fallback: use absolute sum of negative amounts
           expenseTotal = Math.abs(negativeAmounts.reduce((sum, amt) => sum + amt, 0));
@@ -413,7 +409,7 @@ class GroupService {
           const sumPositives = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
           const participants = expense.participantsCount || (negativeAmounts.length > 0 ? positiveAmounts.length + 1 : positiveAmounts.length);
           if (negativeAmounts.length > 0 && participants > 1) {
-            expenseTotal = (sumPositives * participants) / (participants - 1);
+            expenseTotal = sumPositives; 
           } else {
             expenseTotal = sumPositives;
           }
@@ -460,7 +456,7 @@ class GroupService {
           
           if (negativeAmounts.length > 0 && participants > 1) {
             // Payer is a participant -> calculate user's share
-            const totalExpense = (sumPositives * participants) / (participants - 1);
+            const totalExpense = sumPositives ;
             userShare = totalExpense / participants;
           } else {
             // Payer not a participant -> user's share is their positive amount
@@ -504,7 +500,7 @@ class GroupService {
           const participants = expense.participantsCount || (negativeAmounts.length > 0 ? positiveAmounts.length + 1 : positiveAmounts.length);
           
           if (negativeAmounts.length > 0 && participants > 1) {
-            const totalExpense = (sumPositives * participants) / (participants - 1);
+            const totalExpense = sumPositives;
             userShare = totalExpense / participants;
           } else {
             userShare = userAmount;
@@ -518,53 +514,59 @@ class GroupService {
       }
     });
     
-    // Skip my share display
+ // Skip my share display
     
-    // Calculate Total Expenses (each expense counted once, INCLUDING loans)
-    // NOTE: Both LOANS and SHARED expenses count towards total expenses!
-    uniqueExpenses.forEach((expense, key) => {
-      const currency = expense.currency || 'TRY';
-      const symbol = expense.symbol || '₺';
-      
-      // Calculate the actual total amount of this expense
-      const positiveAmounts = expense.amounts.filter(amt => amt > 0);
-      const negativeAmounts = expense.amounts.filter(amt => amt < 0);
-      
-      let expenseTotal = 0;
-      let calculationType = '';
-      let isLoan = false;
-      
-      if (positiveAmounts.length === 0 && negativeAmounts.length > 0) {
-        // Loan: Count as expense (amount that will be paid back)
-        expenseTotal = Math.abs(negativeAmounts[0]);
-        calculationType = 'LOAN';
-        isLoan = true;
-      } else if (positiveAmounts.length > 0) {
-        // Shared expense: infer full total from positive shares
-        const sumPositives = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
-        const participants = expense.participantsCount || (negativeAmounts.length > 0 ? positiveAmounts.length + 1 : positiveAmounts.length);
-        if (negativeAmounts.length > 0 && participants > 1) {
-          // Payer is a participant -> positives exclude payer's own share
-          expenseTotal = (sumPositives * participants) / (participants - 1);
-        } else {
-          // Payer not a participant -> positives already sum to total
-          expenseTotal = sumPositives;
-        }
-        calculationType = 'SHARED EXPENSE';
-      } else if (negativeAmounts.length > 0) {
-        // Fallback: use absolute sum of negative amounts
-        expenseTotal = Math.abs(negativeAmounts.reduce((sum, amt) => sum + amt, 0));
-        calculationType = 'FALLBACK';
-      }
-      
-      console.log(`  ${key.split('-')[0]} (${calculationType}): ${expenseTotal} ${currency}`);
-      
-      // Add ALL expenses to total (both loans and shared)
-      if (!totalExpensesByCurrency[currency]) {
-        totalExpensesByCurrency[currency] = { total: 0, symbol };
-      }
-      totalExpensesByCurrency[currency].total += expenseTotal;
-    });
+// Skip my share display
+    
+// Calculate Total Expenses (only SHARED expenses count towards total)
+uniqueExpenses.forEach((expense, key) => {
+  const currency = expense.currency || 'TRY';
+  const symbol = expense.symbol || '₺';
+  
+  // Calculate the actual total amount of this expense
+  const positiveAmounts = expense.amounts.filter(amt => amt > 0);
+  const negativeAmounts = expense.amounts.filter(amt => amt < 0);
+  
+  // Skip LOAN expenses completely
+  // A loan has: only negatives, OR exactly 1 positive and 1 negative
+  const isLoan = (positiveAmounts.length === 0 && negativeAmounts.length > 0) ||
+                 (positiveAmounts.length === 1 && negativeAmounts.length === 1);
+  
+  if (isLoan) {
+    console.log(`⏭️ Skipping loan: ${key.split('-')[0]} (amounts: ${expense.amounts.join(', ')})`);
+    return; // bu expense'i tamamen atla
+  }
+  
+  let expenseTotal = 0;
+  let calculationType = '';
+
+  if (positiveAmounts.length > 0) {
+    // Shared expense: infer full total from positive shares
+    const sumPositives = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
+    const participants = expense.participantsCount || (negativeAmounts.length > 0 ? positiveAmounts.length + 1 : positiveAmounts.length);
+    if (negativeAmounts.length > 0 && participants > 1) {
+      // Payer is a participant -> positives exclude payer's own share
+      expenseTotal = (sumPositives * participants) / (participants - 1);
+    } else {
+      // Payer not a participant -> positives already sum to total
+      expenseTotal = sumPositives;
+    }
+    calculationType = 'SHARED EXPENSE';
+  } else if (negativeAmounts.length > 0) {
+    // Fallback: use absolute sum of negative amounts
+    expenseTotal = Math.abs(negativeAmounts.reduce((sum, amt) => sum + amt, 0));
+    calculationType = 'FALLBACK';
+  }
+  
+  console.log(`  ${key.split('-')[0]} (${calculationType}): ${expenseTotal} ${currency}`);
+  
+  // ✅ Add only SHARED expenses to total
+  if (!totalExpensesByCurrency[currency]) {
+    totalExpensesByCurrency[currency] = { total: 0, symbol };
+  }
+  totalExpensesByCurrency[currency].total += expenseTotal;
+});
+
     
     console.log('\n💵 Total Expenses by Currency:', totalExpensesByCurrency);
 
@@ -805,32 +807,35 @@ balanceMatrix.forEach(b => {
         balances: balanceMatrix,
         recentExpenses: Array.from(uniqueExpenses.entries()).map(([key, expense]) => {
           // Calculate the correct total amount for this expense
-          const positiveAmounts = expense.amounts.filter(amt => amt > 0);
-          const negativeAmounts = expense.amounts.filter(amt => amt < 0);
-          
-          let correctAmount = 0;
-          let isLoan = false;
-          
-          if (positiveAmounts.length === 0 && negativeAmounts.length > 0) {
-            // Loan: Count as expense (amount that will be paid back)
-            correctAmount = Math.abs(negativeAmounts[0]);
-            isLoan = true;
-          } else if (positiveAmounts.length > 0) {
-            // Shared expense: infer full total from positive shares
-            const sumPositives = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
-            const participants = expense.participantsCount || (negativeAmounts.length > 0 ? positiveAmounts.length + 1 : positiveAmounts.length);
-            if (negativeAmounts.length > 0 && participants > 1) {
-              // Payer is a participant -> positives exclude payer's own share
-              correctAmount = (sumPositives * participants) / (participants - 1);
-            } else {
-              // Payer not a participant -> positives already sum to total
-              correctAmount = sumPositives;
-            }
-          } else if (negativeAmounts.length > 0) {
-            // Fallback: use absolute sum of negative amounts
-            correctAmount = Math.abs(negativeAmounts.reduce((sum, amt) => sum + amt, 0));
-          }
-          
+          const positiveAmounts = expense.amounts.filter(a => a > 0);
+const negativeAmounts = expense.amounts.filter(a => a < 0);
+
+let correctAmount = 0;
+let isLoan = false;
+
+// LOAN (ödünç) durumu: sadece negatif varsa veya biri ödedi, diğeri borçluysa
+if (positiveAmounts.length === 1 && negativeAmounts.length === 1) {
+  isLoan = true;
+  correctAmount = Math.abs(negativeAmounts[0]); // sadece ödünç miktarı kadar
+  expense.participantsCount = 1; // loan tek kişiyle ilişkilidir
+} else if (positiveAmounts.length > 0) {
+  // paylaşılan harcama
+  const sumPositives = positiveAmounts.reduce((sum, amt) => sum + amt, 0);
+  const participants = expense.participantsCount || (negativeAmounts.length > 0 ? positiveAmounts.length + 1 : positiveAmounts.length);
+
+  if (negativeAmounts.length > 0 && participants > 1) {
+    correctAmount = (sumPositives * participants) / (participants - 1);
+  } else {
+    correctAmount = sumPositives;
+  }
+} else if (negativeAmounts.length > 0) {
+  // sadece negatifler varsa (tek taraflı kayıt)
+  correctAmount = Math.abs(negativeAmounts[0]);
+  expense.participantsCount = 1;
+}
+
+correctAmount = Math.round(correctAmount * 100) / 100;
+
           // Get the first expense record for this unique expense to get metadata
           const firstExpenseRecord = expenses.find(exp => {
             const expenseKey = `${exp.description}-${exp.paid_by}-${exp.created_at}-${exp.currency || 'TRY'}`;

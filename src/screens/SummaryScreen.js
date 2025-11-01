@@ -342,6 +342,8 @@ export default function SummaryScreen() {
                       <Text style={styles.expenseDate}>
                         {new Date(expense.createdAt).toLocaleDateString()} • {expense.participants} {expense.participants > 1 ? 'people' : 'person'}
                       </Text>
+                      {console.log('Expense participants:', expense.description, expense.participants)}
+
                     </View>
                     <View style={styles.expenseActions}>
                       <Text style={styles.expenseAmount}>
