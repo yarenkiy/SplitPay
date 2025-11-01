@@ -259,6 +259,7 @@ export default function SummaryScreen() {
                 ₺0
               </Text>
             )}
+            <Text style={styles.expenseNote}>* Only shared expenses are calculated</Text>
           </View>
 
           {/* Members Section */}
@@ -662,6 +663,13 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 20,
     fontWeight: '800',
+  },
+  expenseNote: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontStyle: 'italic',
+    marginTop: 8,
+    textAlign: 'center',
   },
   section: {
     marginBottom: 24,

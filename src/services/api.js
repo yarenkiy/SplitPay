@@ -1,14 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-// Production backend URL (Railway)
-const PRODUCTION_API_URL = 'https://splitpay-production.up.railway.app/api';
+// Railway backend URL (kullanılan hem geliştirmede hem production'da)
+const API_BASE_URL = 'https://splitpay-production.up.railway.app/api';
 
-// Local development URL
-const DEV_API_URL = 'http://192.168.1.100:3001/api';
-
-// Use production URL by default, dev URL only in development mode
-const API_BASE_URL = __DEV__ ? DEV_API_URL : PRODUCTION_API_URL;
+// Eğer local backend'i test etmek isterseniz, yukarıdaki satırı yoruma alıp alttakini açın:
+// const API_BASE_URL = 'http://192.168.1.100:3001/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Dimensions,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -23,6 +24,8 @@ import {
     isTablet,
     scaleFontSize
 } from '../utils/responsive';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function AddGroupScreen() {
   const router = useRouter();
@@ -253,8 +256,19 @@ export default function AddGroupScreen() {
   );
 }
 
-const gridColumns = getGridColumns(70, 12);
-const typeCardWidth = `${(100 - (gridColumns - 1) * 3) / gridColumns}%`;
+// Calculate grid columns and card width based on device size
+const getTypeCardColumns = () => {
+  if (isSmallDevice) return 3;
+  if (isTablet) return 6;
+  return 4;
+};
+
+const typeCardColumns = getTypeCardColumns();
+const typeCardGap = getResponsiveMargin(isSmallDevice ? 8 : 12);
+const typeCardPadding = getResponsivePadding(20);
+
+// Calculate card width in pixels: (screenWidth - 2*padding - gaps) / columns
+const typeCardWidth = (SCREEN_WIDTH - (typeCardPadding * 2) - (typeCardGap * (typeCardColumns - 1))) / typeCardColumns;
 
 const styles = StyleSheet.create({
   container: {
