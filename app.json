@@ -28,7 +28,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/adaptive-icon.jpg",
         "backgroundColor": "#667eea"
       },
       "package": "com.splitpay.app",
@@ -58,9 +58,11 @@
       "typedRoutes": true
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "4636852e-1fa9-45ef-92f7-a0a87db8921a"
       }
-    }
+    },
+    "owner": "yarennkiyy"
   }
 }
